@@ -1,0 +1,3 @@
+TARGET_DIR: 'testdata/out'
+INDENT : '        '
+CONFIG_DIR: 'testdata'

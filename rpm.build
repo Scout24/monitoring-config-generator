@@ -1,0 +1,4 @@
+echo "First running unit tests"
+set -e
+python setup.py test
+python setup.py build
