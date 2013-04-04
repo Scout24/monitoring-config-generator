@@ -1,0 +1,6 @@
+/.project
+/.pydevproject
+/deb_dist
+/monitoring_config_generator.egg-info
+/build
+/dist
