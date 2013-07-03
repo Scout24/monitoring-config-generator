@@ -20,7 +20,7 @@ class completeClean(clean):
 
 setup(
     name="monitoring-config-generator",
-    version=1,
+    version=2,
     author="Felix Sperling",
     description="Get monitoring configuration in YAML format via HTTP and generate icinga host and check config",
     license="GPL",

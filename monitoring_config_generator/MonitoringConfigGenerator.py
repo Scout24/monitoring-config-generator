@@ -1,4 +1,6 @@
+import csv
 from datetime import datetime
+import io
 import logging
 import logging.handlers
 import optparse
@@ -130,10 +132,14 @@ class InputReader:
         self.init_output_path()
 
     def init_host_name(self):
-        self.is_file = os.path.isfile(self.input_name) or os.path.isdir(self.input_name)
+        self.is_file = os.path.isfile(self.input_name)
+        self.is_dir = os.path.isdir(self.input_name)
         if self.is_file:
             self.filename = self.input_name
             self.hostname, ext = os.path.splitext(os.path.basename(self.input_name))
+        elif self.is_dir:
+            self.filename = self.input_name
+            self.hostname = os.path.basename(self.input_name)
         else:
             self.hostname = self.input_name
 
@@ -144,10 +150,9 @@ class InputReader:
         self.etag = None
         self.yaml_config = None
         self.config_changed = True
-        if self.is_file:
-            self.logger.debug("Reading from file %s for host %s" % (self.filename, self.hostname))
+        if self.is_file or self.is_dir:
+            self.logger.debug("Reading from file(s) %s for host %s" % (self.filename, self.hostname))
             self.yaml_config = merge_yaml_files(self.filename)
-
         else:
             self.logger.debug("Reading from host %s" % self.hostname)
             self.read_yaml_config_from_webserver()
@@ -242,7 +247,6 @@ class IcingaGenerator:
                                                            multiple_descriptions)
 
 
-
     def generate(self):
         self.run_pre_generation_checks()
         self.generate_host_definition()
@@ -326,8 +330,27 @@ class YamlToIcinga:
         sorted_keys.sort()
         for key in sorted_keys:
             value = section_data[key]
-            self.icinga_lines.append(("%s%-45s%s" % (self.indent, key, value)))
+            self.icinga_lines.append(("%s%-45s%s" % (self.indent, key, self.value_to_icinga(value))))
         self.write_line("}")
+
+    @staticmethod
+    def value_to_icinga(value):
+        if isinstance(value, list):
+            return YamlToIcinga.list_to_csv(value)
+        else:
+            return str(value)
+
+    @staticmethod
+    def list_to_csv(value):
+        """This method will convert a list of values into a csv string."""
+        # using ",".join(values) as CVS formatter is an invitation for trouble,
+        # lets rather use the proper csv.writer to do the CSV-formatting:
+        bytes_io = io.BytesIO()
+        csv.writer(bytes_io).writerow(value)
+        csv_lines = bytes_io.getvalue()
+        bytes_io.close()
+        first_csv_line_without_eol = csv_lines.split("\n")[0].rstrip()
+        return first_csv_line_without_eol
 
 
 class OutputWriter:

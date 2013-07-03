@@ -350,7 +350,7 @@ class Test(unittest.TestCase):
 
     def test_yaml_merger(self):
         input_dir = "itest_testhost07_multifile_dir"
-        self.run_full_config_gen(input_dir, "testhost07.other.domain.yamlfiles", "testhost07.other.domain.cfg")
+        self.run_full_config_gen(input_dir, "testhost07.other.domain", "testhost07.other.domain.cfg")
 
 
 if __name__ == "__main__":

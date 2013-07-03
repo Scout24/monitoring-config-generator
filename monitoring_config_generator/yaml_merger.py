@@ -1,3 +1,4 @@
+import copy
 import glob
 import os
 import yaml
@@ -14,9 +15,11 @@ def dict_merge(a, b):
             elif isinstance(a[key], list) and isinstance(b[key], list):
                 a[key].extend(b[key])
             else:
-                a[key] = b[key]
+                # use deepcopy cause b might be a list
+                a[key] = copy.deepcopy(b[key])
         else:
-            a[key] = b[key]
+            # use deepcopy cause b might be a list
+            a[key] = copy.deepcopy(b[key])
 
 
 def merge_yaml_files(d):

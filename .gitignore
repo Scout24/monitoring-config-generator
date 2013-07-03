@@ -4,3 +4,6 @@
 /monitoring_config_generator.egg-info
 /build
 /dist
+*.idea
+*.pyc
+/venv
