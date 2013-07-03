@@ -8,7 +8,7 @@ YAML-data and writes an Icinga-configuration file as output.
 yaml-server => monitoring-config-generator => Icinga
 ----------------------------------------------------
 
-monitoring-config-generator is closely related to the [[https://github.com/ImmobilienScout24/yaml-server][yaml-server]]
+monitoring-config-generator is closely related to the [yaml-server](https://github.com/ImmobilienScout24/yaml-server)
 project. While yaml-server reads and merges YAML-configuration files
 on a machine and then serves the result as YAML over HTTP,
 monitoring-config-generator reads the merged YAML-configuration files
@@ -45,13 +45,11 @@ Difference between files and directories:
   and monitoring-config-generator will merge them in a similar manner.
 
 
-Merging of YAML-files: see yaml-server and yadt-minion
+Merging of YAML-files: see yaml-server
 ------------------------------------------------------
 
 The merging of YAML-files normally happens in yaml-server and is
-documented there, so please read [[https://github.com/ImmobilienScout24/yaml-server/blob/master/README.md][yaml-server/Readme.md]] for details.
-You might also want to have a look at [[https://github.com/yadt/yadt-minion][yadt-minion]] which is the library
-used for merging the YAML-files in a directory.
+documented there, so please read [yaml-server/Readme.md](https://github.com/ImmobilienScout24/yaml-server/blob/master/README.md) for details.
 
 
 Output: You specify directory, filename is derived from filename or URL
