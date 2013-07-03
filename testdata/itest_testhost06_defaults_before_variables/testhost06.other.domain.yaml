@@ -1,0 +1,49 @@
+# this file demonstrates, how defaults and variables interact:
+# - first defaults are applied
+# - then variables are replaced
+
+
+# we have to have a host_name in each section
+# else the generated icinga config will not pass the sanity check
+# so we define a host_name as default here
+defaults:
+    check_command: 1
+    check_interval: 2
+    check_period: 3
+    host_name: testhost06
+    max_check_attempts: 4
+    notification_interval: 5
+    notification_period: 6
+    retry_interval: 7
+    y: ${x}    
+
+variables:
+    x: "42"
+
+#   this should become y = blah42, cause default will not apply here, but var will still be replaced
+host:
+    y: blah${x}
+
+services:
+#   this should become y=42 obviously
+-   service_description: service1
+
+#   this should become x=23 and y=42, cause attribute x is independent of variable x
+-   service_description: service2
+    x: 23
+
+#   this should become 
+#   x=${y}, cause y is a default but not a variable
+#   y=4242, cause default does not apply here, but var does
+-   service_description: service3
+    x: ${y}
+    y: ${x}${x}
+
+#   this should become
+#   x = 42, cause var x will replace value in x 
+#   y = 42${y}42 cause ${x} is a variable but ${y} is not a variable and thus should not be replaced
+-   service_description: service4
+    x: ${x}
+    y: ${x}${y}${x}
+
+

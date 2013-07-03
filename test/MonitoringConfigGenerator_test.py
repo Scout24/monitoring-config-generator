@@ -1,164 +1,240 @@
 import unittest
-import os,shutil,logging
-# load test configuration
-os.environ['MONITORING_CONFIG_GENERATOR_CONFIG']="testdata/testconfig.yaml"
-from monitoring_config_generator.settings import CONFIG
-from monitoring_config_generator.MonitoringConfigGenerator import MonitoringConfigGenerator
+import os
+import shutil
 
 import yaml
+
+# load test configuration
+os.environ['MONITORING_CONFIG_GENERATOR_CONFIG'] = "testdata/testconfig.yaml"
+from monitoring_config_generator.settings import CONFIG
+from monitoring_config_generator.MonitoringConfigGenerator import MonitoringConfigGenerator, \
+    IcingaGenerator, MON_CONF_GEN_COMMENT
+from monitoring_config_generator.MonitoringConfigGeneratorExceptions import *
+from TestLogger import init_test_logger
 
 class Test(unittest.TestCase):
 
     testDir = "testdata"
     shutil.rmtree(CONFIG["TARGET_DIR"], True)
     os.mkdir(CONFIG["TARGET_DIR"])
-    
-    # set up logging without syslog
-    logger = logging.getLogger()
-    loghandler = logging.StreamHandler()
-    loghandler.setFormatter(logging.Formatter('yaml_server[%(filename)s:%(lineno)d]: %(levelname)s: %(message)s'))
-    logger.addHandler(loghandler)
-    logger.setLevel(logging.DEBUG)
 
-    def testGeneratesConfigFromFile(self):
-        thisTestDir = os.path.join(self.testDir, "itest_testhost02")
-        inputPath = os.path.abspath(os.path.join(thisTestDir, "testhost02.other.domain.yaml"))
-        MonitoringConfigGenerator(inputPath).generate()
+    init_test_logger()
 
-        outputPath = os.path.join(CONFIG['TARGET_DIR'], 'testhost02.other.domain.cfg')
-        expectedOutputPath = os.path.join(thisTestDir, 'testhost02.other.domain.cfg')
+    def run_config_generator_on_directory(self, input_dir):
+        """convenience function: if input_dir contains exactly one yaml and on .cfg file it will run the generator
+           on the yaml file and compare to the .cfg file"""
+        dir_for_this_test = os.path.join(self.testDir, input_dir)
+        all_yaml = [filename for filename in os.listdir(dir_for_this_test) if filename.endswith(".yaml")]
+        all_cfg = [filename for filename in os.listdir(dir_for_this_test) if filename.endswith(".cfg")]
+        self.assertEquals(1, len(all_yaml))
+        self.assertEquals(1, len(all_cfg))
+        self.run_full_config_gen(input_dir, all_yaml[0], all_cfg[0])
 
-        self.assertThatContentsOfFilesIsIdentical(outputPath, expectedOutputPath)
-    
-    def testGeneratesConfigFromFileWithOldYamlFormat(self):
-        thisTestDir = os.path.join(self.testDir, "itest_testhost01_old_format")
-        inputPath = os.path.abspath(os.path.join(thisTestDir, "testhost01.some.domain.yaml"))
-        MonitoringConfigGenerator(inputPath).generate()
+    def run_full_config_gen(self, input_dir, yaml_file, config_file):
+        """this will run the config gen on the yaml_file and compare the generated output to config_file"""
+        this_test_dir = os.path.join(self.testDir, input_dir)
+        input_path = os.path.abspath(os.path.join(this_test_dir, yaml_file))
+        MonitoringConfigGenerator(input_path).generate()
 
-        outputPath = os.path.join(CONFIG['TARGET_DIR'], 'testhost01.some.domain.cfg')
-        expectedOutputPath = os.path.join(thisTestDir, 'testhost01.some.domain.cfg')
+        output_path = os.path.join(CONFIG['TARGET_DIR'], config_file)
+        expected_output_path = os.path.join(this_test_dir, config_file)
 
-        self.assertThatContentsOfFilesIsIdentical(outputPath, expectedOutputPath)
-        
-    def assertThatContentsOfFilesIsIdentical(self, file1, file2):
-        with open(file1, 'r') as actualFile:
-            with open(file2, 'r') as expectedFile:
-                linecount=0
-                for expectedLine in expectedFile:
-                    linecount+=1
-                    actualLine = actualFile.readline()
-                    self.assertEquals(actualLine, expectedLine,"Line %i differs" % linecount)
+        self.assert_that_contents_of_files_is_identical(output_path, expected_output_path)
 
 
-    def testGeneratesIcingaConfig(self):
-        inputYaml = '''
+    def test_generates_config_from_new_file(self):
+        self.run_config_generator_on_directory("itest_testhost03_new_format")
+
+    def test_generated_config_using_defaults(self):
+        self.run_config_generator_on_directory("itest_testhost04_defaults")
+
+    def test_generated_config_using_defaults_and_variables(self):
+        self.run_config_generator_on_directory("itest_testhost05_variables")
+
+    def test_some_edge_cases(self):
+        self.run_config_generator_on_directory("itest_testhost06_defaults_before_variables")
+
+    def assert_that_contents_of_files_is_identical(self, actualFileName, expectedFileName):
+        linesActual = open(actualFileName, 'r').readlines()
+        linesExpected = open(expectedFileName, 'r').readlines()
+        lenActual = len(linesActual)
+        lenExpected = len(linesExpected)
+
+        self.assertEquals(lenActual,
+                          lenExpected,
+                          "number of lines not equal (expected=%s, actual=%s)" % (lenExpected, lenActual))
+
+        for index in range(lenExpected):
+            lineActual = linesActual[index]
+            lineExpected = linesExpected[index]
+
+            # special handling for the the header line
+            # because "Created by ... " contains a date, so it will not match exactly
+            if lineExpected.startswith(MON_CONF_GEN_COMMENT):
+                # so if it is the line containing the date we will only compare the start of the line
+                self.assertTrue(lineActual.startswith(MON_CONF_GEN_COMMENT))
+            else:
+                # other lines will be compared completely of course
+                self.assertEquals(lineActual,
+                                  lineExpected,
+                                  "Line #%d does not match (expected='%s', actual='%s'" %
+                                      (index, lineExpected, lineActual))
+
+    def run_config_gen(self, hostname, yamlConfig):
+        yaml_parsed = yaml.load(yamlConfig)
+        icinga_generator = IcingaGenerator(hostname, yaml_parsed)
+        icinga_generator.generate()
+        self.host_definition = icinga_generator.host
+        self.service_definitions = icinga_generator.services
+
+    def test_generates_icinga_config(self):
+        input_yaml = '''
             host:
                 address: testhost01.some.domain
-            checks:
-                -  check_command: check_graphite_disk_usage!_boot!90!95
-        '''
-        yamlConfig = yaml.load(inputYaml)
-        icingaConfig = MonitoringConfigGenerator("testhost01").generateIcingaConfig("testhost01", yamlConfig)
-        self.assertTrue('host' in icingaConfig)
-        self.assertTrue('services' in icingaConfig)
+                host_name: testhost01
 
-    def testGeneratesHostDefinition(self):
-        inputYaml = '''
+            services:
+                -  check_command: check_graphite_disk_usage!_boot!90!95
+                   host_name: testhost01
+                   service_description: service 1
+            defaults:
+                check_period: 2
+                max_check_attempts: 5
+                notification_interval: 3
+                notification_period: 4
+                check_interval: 6
+                retry_interval: 7
+        '''
+        self.run_config_gen("testhost01", input_yaml)
+
+    def test_generates_host_definition(self):
+        input_yaml = '''
             host:
                 check_period:   24x7
                 max_check_attempts:    5
+                host_name: testhost01.sub.domain
+                max_check_attempts: 5
+                notification_interval: 3
+                notification_period: 4
+                check_interval: 6
+                retry_interval: 7
         '''
-        
-        yamlConfig = yaml.load(inputYaml)
-        hostConfig = MonitoringConfigGenerator("testhost01.sub.domain").generateHostDefinition("testhost01.sub.domain", yamlConfig)
-        self.assertEquals(hostConfig.get("address"), "testhost01.sub.domain")
-        self.assertEquals(hostConfig.get("host_name"), "testhost01")
-        self.assertEquals(hostConfig.get("check_period"), "24x7")
-        self.assertEquals(hostConfig.get("max_check_attempts"), 5)
-        
-    def testThatDefaultsAreUsedForGenerationOfHostDefinition(self):
-        inputYaml = '''
+        self.run_config_gen("testhost01.sub.domain", input_yaml)
+        self.assertEquals(self.host_definition.get("check_period"), "24x7")
+        self.assertEquals(self.host_definition.get("max_check_attempts"), 5)
+
+    def test_default_values_are_no_longer_generated(self):
+        """address and host_name used to be generated in the old format, but are no longer"""
+        input_yaml = '''
             defaults:
+                host_name: testhost01.sub.domain
+            host:
                 check_period:   24x7
                 max_check_attempts:    5
+                notification_interval: #
+                notification_period: #
         '''
-        
-        yamlConfig = yaml.load(inputYaml)
-        hostConfig = MonitoringConfigGenerator("testhost01.sub.domain").generateHostDefinition("testhost01.sub.domain", yamlConfig)
-        self.assertEquals(hostConfig.get("address"), "testhost01.sub.domain")
-        self.assertEquals(hostConfig.get("host_name"), "testhost01")
-        self.assertEquals(hostConfig.get("check_period"), "24x7")
-        self.assertEquals(hostConfig.get("max_check_attempts"), 5)
-        
-    def testThatServiceOnlyDefaultsAreNotUsedForGenerationOfHostDefinition(self):
-        inputYaml = '''
+        host_name = "testhost01.sub.domain"
+        self.run_config_gen(host_name, input_yaml)
+        self.assertEquals(None, self.host_definition.get("address"))
+        self.assertEquals(self.host_definition.get("host_name"), host_name)
+        self.assertEquals(self.host_definition.get("check_period"), "24x7")
+        self.assertEquals(self.host_definition.get("max_check_attempts"), 5)
+
+    def test_that_service_only_defaults_are_not_used_for_generation_of_host_definition(self):
+        input_yaml = '''
             defaults:
+                host_name: testhost01
                 hostgroup_name:    group name
                 service_description: desc of service
                 is_volatile:    1
+                check_period: 2
                 max_check_attempts:    5
+                notification_interval: 4
+                notification_period: 5
+                check_interval: 6
+                retry_interval: 7
+
         '''
-        
-        yamlConfig = yaml.load(inputYaml)
-        hostname = "testhost01.sub.domain"
-        hostConfig = MonitoringConfigGenerator(hostname).generateHostDefinition(hostname, yamlConfig)
-        self.assertEquals(hostConfig.get("host_name"), "testhost01")
-        self.assertEquals(hostConfig.get("max_check_attempts"), 5)
-        self.assertFalse("hostgroup_name" in hostConfig)    
-        self.assertFalse("service_description" in hostConfig)        
-        self.assertFalse("is_volatile" in hostConfig)    
-        
-        
-    def testThatForYamlconfigWithoutHostSectionAMinimalHostdefinitionIsGenerated(self):
-        yamlConfig = yaml.load("bla: ")
-        hostConfig = MonitoringConfigGenerator("testhost01.sub.domain").generateHostDefinition("testhost01.sub.domain", yamlConfig)
-        self.assertEquals(hostConfig.get("address"), "testhost01.sub.domain")
-        self.assertEquals(hostConfig.get("host_name"), "testhost01")
-        self.assertEquals(hostConfig.get("alias"), "testhost01.sub.domain")
-        
-        
-        
-    def testExtractsHostNameFromFqdn(self):
-        fqdn = "testhost01.sub.domain"
-        hostname = MonitoringConfigGenerator(fqdn).extractHostnameFromFqdn(fqdn)
-        self.assertEquals(hostname, "testhost01")
-        
-    def testGeneratesCheckDefinition(self):
-        inputYaml = '''
-            checks:
+        self.run_config_gen("testhost01.sub.domain", input_yaml)
+        self.assertEquals(self.host_definition.get("host_name"), "testhost01")
+        self.assertEquals(self.host_definition.get("max_check_attempts"), 5)
+        # these values used to be removed from the host definition in the version for the old format
+        # but the new version no longer exhibits this behavior
+        self.assertEquals(self.host_definition.get("hostgroup_name"), "group name")
+        self.assertEquals(self.host_definition.get("service_description"), "desc of service")
+        self.assertEquals(self.host_definition.get("is_volatile"), 1)
+
+    def test_that_for_yaml_config_without_host_section_a_minimal_host_definition_is_generated(self):
+        input_yaml = '''
+            defaults:
+                    host_name: testhost01
+                    check_period: 2
+                    max_check_attempts: 3
+                    notification_interval: 4
+                    notification_period: 5
+                    check_interval: 6
+                    retry_interval: 7
+
+            services:
+                -   service_description: 234
+                    check_command: check_graphite_disk_usage!_boot!90!95
+        '''
+        hostname = "testhost01"
+        self.run_config_gen(hostname, input_yaml)
+        # there is no hostname but the values should still be added through the defaults
+        self.assertTrue("host_name" in self.host_definition.keys())
+
+    def test_generates_check_definition(self):
+        input_yaml = '''
+            services:
                 -   check_command: check_graphite_disk_usage!_boot!90!95
+                    service_description: service 1
             defaults:
                 check_command: check_graphite_disk_usage!_data!90!95
                 check_period: workhours
+                host_name: testhost01
+                max_check_attempts: 3
+                notification_interval: 4
+                notification_period: 5
+                check_interval: 6
+                retry_interval: 7
         '''
-        yamlConfig = yaml.load(inputYaml)
         hostname = "testhost01"
-        checkConfig = MonitoringConfigGenerator(hostname).generateServiceDefinitions(hostname, yamlConfig)
-        self.assertEquals(len(checkConfig), 1)
-        self.assertEquals(checkConfig[0].get("host_name"), hostname)
-        self.assertEquals(checkConfig[0].get("check_command"), "check_graphite_disk_usage!_boot!90!95")
-        self.assertEquals(checkConfig[0].get("check_period"), "workhours")
+        self.run_config_gen(hostname, input_yaml)
+        self.assertEquals(len(self.service_definitions), 1)
+        self.assertEquals(self.service_definitions[0].get("host_name"), hostname)
+        self.assertEquals(self.service_definitions[0].get("check_command"), "check_graphite_disk_usage!_boot!90!95")
+        self.assertEquals(self.service_definitions[0].get("check_period"), "workhours")
 
-    def testThatDefaultsAreUsedForGenerationOfServiceDefinition(self):
-        inputYaml = '''
+    def test_that_defaults_are_used_for_generation_of_service_definition(self):
+        input_yaml = '''
             defaults:
                 check_period:   24x7
                 max_check_attempts:    5
-            
-            checks:
-                - check_command: commando
+                host_name: testhost01
+                notification_interval: 4
+                notification_period: 5
+                check_interval: 6
+                retry_interval: 7
+
+            services:
+                - service_description: service1
+                  check_command: commando
         '''
         
-        yamlConfig = yaml.load(inputYaml)
         hostname = "testhost01"
-        checkConfig = MonitoringConfigGenerator(hostname).generateServiceDefinitions(hostname, yamlConfig)
-        self.assertEquals(checkConfig[0].get("host_name"), hostname)
-        self.assertEquals(checkConfig[0].get("check_command"), "commando")
-        self.assertEquals(checkConfig[0].get("check_period"), "24x7")
-        self.assertEquals(checkConfig[0].get("max_check_attempts"), 5)
-        
-    def testThatHostOnlyDefaultsAreNotUsedForGenerationOfServiceDefinition(self):
-        inputYaml = '''
+        self.run_config_gen(hostname, input_yaml)
+        self.assertEquals(self.service_definitions[0].get("host_name"), hostname)
+        self.assertEquals(self.service_definitions[0].get("check_command"), "commando")
+        self.assertEquals(self.service_definitions[0].get("check_period"), "24x7")
+        self.assertEquals(self.service_definitions[0].get("max_check_attempts"), 5)
+
+    def test_that_host_only_defaults_are_no_longer_supported(self):
+        """the old version automatically removed some directives that only applied to hosts from services
+        this behavior is no longer supported
+        """
+        input_yaml = '''
             defaults:
                 alias:    hostnamealias
                 parents:    asdf
@@ -167,31 +243,115 @@ class Test(unittest.TestCase):
                 2d_coords:    x,y
                 3d_coords:    x,y,z
                 max_check_attempts:    5
-            
-            checks:
+                host_name: testhost01
+                check_period: 2
+                notification_interval: 4
+                notification_period: 5
+                check_interval: 6
+                retry_interval: 7
+
+            services:
+                - service_description: service 1
+                  check_command: commando
+        '''
+
+        hostname = "testhost01"
+        self.run_config_gen(hostname, input_yaml)
+        self.assertEquals(self.service_definitions[0].get("host_name"), "testhost01")
+        self.assertEquals(self.service_definitions[0].get("check_command"), "commando")
+        self.assertEquals(self.service_definitions[0].get("max_check_attempts"), 5)
+        self.assertEquals(self.service_definitions[0].get("alias"), "hostnamealias")
+        self.assertEquals(self.service_definitions[0].get("parents"), "asdf")
+        self.assertEquals(self.service_definitions[0].get("vrml_image"), "file")
+        self.assertEquals(self.service_definitions[0].get("statusmap_image"), "file")
+        self.assertEquals(self.service_definitions[0].get("2d_coords"), "x,y")
+        self.assertEquals(self.service_definitions[0].get("3d_coords"), "x,y,z")
+
+    def test_error_on_unsupported_section(self):
+        """if the input-YAML contains a non-supported section, an exception should be thrown"""
+        input_yaml = '''
+            defaults:
+                whatever: whatever
+            services:
+                - check_command: commando
+            unsupported:
+                - whatever
+        '''
+        hostname = "testhost01"
+        self.assertRaises(UnknownSectionException, self.run_config_gen, hostname, input_yaml)
+
+
+    def test_error_on_missing_hostname_in_service(self):
+        """if the generated output contains a service section with no host_name, an exception should be thrown"""
+        input_yaml = '''
+            services:
                 - check_command: commando
         '''
-        
-        yamlConfig = yaml.load(inputYaml)
         hostname = "testhost01"
-        checkConfig = MonitoringConfigGenerator(hostname).generateServiceDefinitions(hostname, yamlConfig)
-        self.assertEquals(checkConfig[0].get("host_name"), hostname)
-        self.assertEquals(checkConfig[0].get("check_command"), "commando")
-        self.assertEquals(checkConfig[0].get("max_check_attempts"), 5)
-        self.assertFalse("alias" in checkConfig[0])        
-        self.assertFalse("parents" in checkConfig[0])        
-        self.assertFalse("vrml_image" in checkConfig[0])        
-        self.assertFalse("statusmap_image" in checkConfig[0])        
-        self.assertFalse("2d_coords" in checkConfig[0])        
-        self.assertFalse("3d_coords" in checkConfig[0])        
+        self.assertRaises(MandatoryDirectiveMissingException, self.run_config_gen, hostname, input_yaml)
 
-    def testRemovesEntriesFromDict(self):
-        attributes = {'attr1': 'val1', 'attr2': 'val2', 'attr3': 'val3'}
-        metaKeys = ['attr2', 'attr4']
-        MonitoringConfigGenerator("test").removeEntriesFromDict(attributes, metaKeys)
-        self.assertEqual(attributes, {'attr1': 'val1', 'attr3': 'val3'})
-        
+    def test_error_on_missing_hostname_in_host(self):
+        """if the generated output contains a service section with no host_name, an exception should be thrown"""
+        input_yaml = '''
+            host:
+                a: b
+        '''
+        hostname = "testhost01"
+        self.assertRaises(MandatoryDirectiveMissingException, self.run_config_gen, hostname, input_yaml)
+
+    def test_error_on_different_hostnames_in_sections(self):
+        """if the generated output contains a service section with no host_name, an exception should be thrown"""
+        input_yaml = '''
+            defaults:
+                max_check_attempts:    5
+                check_period: 2
+                notification_interval: 4
+                notification_period: 5
+                check_interval: 6
+                retry_interval: 7
+            host:
+                host_name: testhost01
+
+            services:
+                -  service_description: service 1
+                   check_command: cmd1
+                   host_name: testhost01
+                -  service_description: service 2
+                   check_command: cmd2
+                   host_name: testhost02
+        '''
+        hostname = "testhost01"
+        self.assertRaises(HostNamesNotEqualException, self.run_config_gen, hostname, input_yaml)
+
+
+    def test_error_section_descriptions_not_unique(self):
+        """if the generated output contains a service section with no host_name, an exception should be thrown"""
+        input_yaml = '''
+            defaults:
+                max_check_attempts:    5
+                check_period: 2
+                notification_interval: 4
+                notification_period: 5
+                check_interval: 6
+                retry_interval: 7
+            host:
+                host_name: testhost01
+
+            services:
+                -  service_description: service 1
+                   check_command: cmd1
+                   host_name: testhost01
+                -  service_description: service 1
+                   check_command: cmd2
+                   host_name: testhost01
+        '''
+        hostname = "testhost01"
+        self.assertRaises(ServiceDescriptionNotUniqueException, self.run_config_gen, hostname, input_yaml)
+
+    def test_yaml_merger(self):
+        input_dir = "itest_testhost07_multifile_dir"
+        self.run_full_config_gen(input_dir, "testhost07.other.domain.yamlfiles", "testhost07.other.domain.cfg")
+
 
 if __name__ == "__main__":
-    #import sys;sys.argv = ['', 'Test.testName']
     unittest.main()

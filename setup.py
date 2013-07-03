@@ -36,7 +36,7 @@ setup(
     #scripts = ["bin/monitoring_config_generator"],
     entry_points={
         'console_scripts': [
-              'monitoring_config_generator = monitoring_config_generator.MonitoringConfigGenerator:mainMethod',
+              'monitoring_config_generator = monitoring_config_generator.MonitoringConfigGenerator:main_method',
         ],
     },
      cmdclass={'clean' : completeClean},

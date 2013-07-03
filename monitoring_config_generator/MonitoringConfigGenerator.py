@@ -1,23 +1,34 @@
-import os
-import yaml
-import sys
-import httplib2
+from datetime import datetime
 import logging
 import logging.handlers
-from settings import CONFIG, CONFIG_FILE, read_config
-from copy import deepcopy
 import optparse
-import re
+import os
+import sys
+from time import localtime, strftime
+from traceback import print_exc
+
+
+import httplib2
+import yaml
+
+from MonitoringConfigGeneratorExceptions import *
+from settings import CONFIG, ICINGA_HOST_DIRECTIVES, ICINGA_SERVICE_DIRECTIVES
+from yaml_merger import dict_merge, merge_yaml_files
+
+MON_CONF_GEN_COMMENT = '# Created by MonitoringConfigGenerator'
+ETAG_COMMENT = '# ETag: '
+SUPPORTED_SECTIONS = ['defaults', 'variables', 'host', 'services']
+
 
 class MonitoringConfigGenerator:
 
-    def __init__(self,args = None):
+    def __init__(self, args=None):
         if args:
             if isinstance(args, basestring):
                 args = [args]
         else:
-            args= []
-        self.logger = self.createLogger()
+            args = []
+        self.create_logger()
 
         usage = '''
 %prog reads the yaml config of a host via file or http and generates nagios/icinga config from that
@@ -26,177 +37,350 @@ class MonitoringConfigGenerator:
 Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG environment variable
 '''
         parser = optparse.OptionParser(usage=usage, prog="monitoring_config_generator")
-        parser.add_option("--debug", dest="debug", action="store_true", default=False, help="Enable debug logging [%default]")
-        parser.add_option("--targetdir", dest="targetDir", action="store", default=CONFIG['TARGET_DIR'], type="string", help="Directory for generated config files")
-        self.options, self.args = parser.parse_args(args) 
-        if self.options.debug:
-            loghandler = logging.StreamHandler()
-            loghandler.setFormatter(logging.Formatter('yaml_server[%(filename)s:%(lineno)d]: %(levelname)s: %(message)s'))
-            self.logger.addHandler(loghandler)
-            self.logger.setLevel(logging.DEBUG)
-            self.logger.debug("Debug logging enabled via command line")
+        parser.add_option("--debug",
+                          dest="debug",
+                          action="store_true",
+                          default=False,
+                          help="Enable debug logging [%default]")
 
-        self.targetDir = self.options.targetDir
-        if not os.path.isdir(self.targetDir):
-            raise BaseException("%s is not a directory" % self.targetDir)
-        self.logger.debug("Using %s as target dir" % self.targetDir) 
+        parser.add_option("--targetdir",
+                          dest="target_dir",
+                          action="store",
+                          default=CONFIG['TARGET_DIR'],
+                          type="string",
+                          help="Directory for generated config files")
+
+        parser.add_option("--skip-checks",
+                          dest="skip_checks",
+                          action="store_true",
+                          default=False,
+                          help="Skip checks on generated config")
+
+        self.options, self.args = parser.parse_args(args)
+
+        if self.options.debug:
+            self.output_debug_log_to_console()
+
+        self.target_dir = self.options.target_dir
+        if not os.path.isdir(self.target_dir):
+            raise MonitoringConfigGeneratorException("%s is not a directory" % self.target_dir)
+        self.logger.debug("Using %s as target dir" % self.target_dir)
         
         if len(self.args) < 1:
             self.logger.fatal("Need to get at least one host to operate on")
-            raise BaseException("Need to get at least one host to operate on")
+            raise MonitoringConfigGeneratorException("Need to get at least one host to operate on")
         self.logger.debug("Args: %s" % self.args)
-        
+        source = self.args[0]
+        self.logger.info("MonitoringConfigGenerator start: reading from %s, writing to %s" % (source, self.target_dir))
+        self.input_reader = InputReader(self.args[0], self.target_dir)
 
+    def create_logger(self):
+        self.logger = logging.getLogger()
+        if len(self.logger.handlers) == 0:
+            try:
+                loghandler = logging.handlers.SysLogHandler(address='/dev/log')
+            except:
+                # if we cannot setup a SysLogger (maybe we are running on Win) log to console as last resort
+                loghandler = logging.StreamHandler()
 
-    def createLogger(self):
-        logger = logging.getLogger()
-        if len(logger.handlers) == 0:
-            loghandler = logging.handlers.SysLogHandler(address='/dev/log')
-            loghandler.setFormatter(logging.Formatter('monitoring_config_generator[' + str(os.getpid()) + ']: %(levelname)s: %(message)s'))
-            logger.addHandler(loghandler)
-        logger.setLevel(logging.INFO)
-        return logger
+            format_string = 'monitoring_config_generator[' + str(os.getpid()) + ']: %(levelname)s: %(message)s'
+            loghandler.setFormatter(logging.Formatter(format_string))
+            self.logger.addHandler(loghandler)
+        self.logger.setLevel(logging.INFO)
+
+    def output_debug_log_to_console(self):
+        loghandler = logging.StreamHandler()
+        loghandler.setFormatter(
+            logging.Formatter('MonitoringConfigGenerator[%(filename)s:%(lineno)d]: %(levelname)s: %(message)s'))
+        self.logger.addHandler(loghandler)
+        self.logger.setLevel(logging.DEBUG)
+        self.logger.debug("Debug logging enabled via command line")
 
     def generate(self):
-        argument = self.args[0]
-        if os.path.isfile(argument):
-            (hostname,ext) = os.path.splitext(os.path.basename(argument))
-            self.logger.debug("Reading from %s for %s" % (argument,hostname))
-            yamlconfig = self.readYamlFromFile(argument)
-        else:
-            hostname = argument
-            yamlconfig = self.readYamlConfigFromWebserver(hostname)            
+        self.input_reader.read_input()
 
-        if len(yamlconfig) == 0:
+        if not self.input_reader.config_changed:
+            self.logger.debug("Config didn't change, keeping old version")
+            return 0
+
+        self.yaml_config = self.input_reader.yaml_config
+        if self.yaml_config is None:
             return 1
-            
-        icingaConfig = self.generateIcingaConfig(hostname, yamlconfig)
-        outputPath = os.path.join(self.options.targetDir, hostname + '.cfg')
-        self.dumpIcingaConfig(icingaConfig, outputPath)
+
+        self.icinga_generator = IcingaGenerator(self.input_reader.hostname, self.yaml_config)
+        self.icinga_generator.skip_checks = self.options.skip_checks
+        self.icinga_generator.generate()
+        self.write_output()
         return 0
-        
-    def readYamlConfigFromWebserver(self, hostname):
-        h = httplib2.Http()
-        url = "http://" + hostname + ":" + CONFIG['PORT'] + CONFIG['RESOURCE']
-        self.logger.debug("Retrieving config from URL: %s" % url)
-        
-        resp = {}
-        try:
-            resp, content = h.request(url, "GET")
-        except Exception:
-            self.logger.warn("Problem retrieving config for %s from %s" % (hostname, url))
-            return ""
+
+    def write_output(self):
+        self.output_writer = OutputWriter(self.input_reader.output_path)
+        self.output_writer.indent = CONFIG['INDENT']
+        self.output_writer.etag = self.input_reader.etag
+        self.output_writer.write_icinga_config(self.icinga_generator)
+
+
+class InputReader:
+
+    def __init__(self, input_name, target_dir):
+        self.logger = logging.getLogger("InputReader")
+        self.input_name = input_name
+        self.target_dir = target_dir
+        self.init_host_name()
+        self.init_output_path()
+
+    def init_host_name(self):
+        self.is_file = os.path.isfile(self.input_name) or os.path.isdir(self.input_name)
+        if self.is_file:
+            self.filename = self.input_name
+            self.hostname, ext = os.path.splitext(os.path.basename(self.input_name))
         else:
-            if resp['status'] == '200':
-                return yaml.load(content)
-            
-        self.logger.debug("Host %s returned with %s." % (hostname, resp['status']))
-        return ""
-        
-    def readYamlFromFile(self, filepath):
-        with open(filepath, 'r') as f:
-            content = f.read()
-            return yaml.load(content)
+            self.hostname = self.input_name
 
-    def generateIcingaConfig(self, hostname, yamlConfig):
-        icingaConfig = dict()
-        icingaConfig['host'] = self.generateHostDefinition(hostname, yamlConfig)
-        icingaConfig['services'] = self.generateServiceDefinitions(hostname, yamlConfig)
-        return icingaConfig
+    def init_output_path(self):
+        self.output_path = os.path.join(self.target_dir, self.hostname + '.cfg')
 
-    def dumpIcingaConfig(self, rawConfig, outputPath):
-        icinga = [{
-            "host" : rawConfig.get("host", {})
-        }]
-        for service in rawConfig.get("services", []):
-            icinga.append({"service": service})
-        
-        indent = CONFIG['INDENT']
-        
-        with open(outputPath, 'w') as f:
-            for section in icinga:
-                for (sectionType, sectionData) in section.items():
-                    if sectionData:
-                        f.write("define %s {\n%s\n}\n\n" % (sectionType, "\n".join([indent + "%-45s%s" % item for item in sectionData.items()])))
+    def read_input(self):
+        self.etag = None
+        self.yaml_config = None
+        self.config_changed = True
+        if self.is_file:
+            self.logger.debug("Reading from file %s for host %s" % (self.filename, self.hostname))
+            self.yaml_config = merge_yaml_files(self.filename)
+
+        else:
+            self.logger.debug("Reading from host %s" % self.hostname)
+            self.read_yaml_config_from_webserver()
+
+    def read_yaml_config_from_webserver(self):
+        """ will connect to hostname and retrieve the YAML config
+                if no yaml could be loaded, yaml will be an empty string
+                will also set self.etag
+        """
+        url = "http://" + self.hostname + ":" + CONFIG['PORT'] + CONFIG['RESOURCE']
+        self.logger.debug("Retrieving config from URL: %s" % url)
+
+        oldEtag = ETagReader(self.output_path).etag
+        if oldEtag is not None:
+            self.logger.debug("Using etag %s" % oldEtag)
+
+        try:
+            if oldEtag is not None:
+                headers = {"If-None-Match": oldEtag}
+            else:
+                headers = {}
+
+            response, content = (httplib2.Http()).request(url, "GET", headers=headers)
+            status = response['status']
+            self.logger.debug("Server responds with status %s" % status)
+            if status == '200':
+                self.etag = response.get('etag', None)
+                self.yaml_config = yaml.load(content)
+            elif status == '304':
+                self.config_changed = False
+                self.etag = oldEtag
+            else:
+                raise MonitoringConfigGeneratorException("Host %s returned with status %s.  "
+                                                         "I don't know how to handle that." %
+                                                             (self.hostname, status))
+        except Exception, e:
+            self.logger.error("Problem retrieving config for %s from %s" % (self.hostname, url), exc_info=True)
+            self.etag = None
+            self.yaml_config = None
+
+
+class IcingaGenerator:
+    def __init__(self, hostname, yaml_config):
+        self.logger = logging.getLogger("IcingaGenerator")
+        self.hostname = hostname
+        self.yaml_config = yaml_config
+        self.skip_checks = False
+
+    def run_pre_generation_checks(self):
+        if not self.skip_checks:
+            # check for unknown sections
+            if self.yaml_config is not None:
+                for section in self.yaml_config:
+                    if not section in SUPPORTED_SECTIONS:
+                        raise UnknownSectionException("I don't know how to handle section '%s' " % section)
+
+    def run_post_generation_checks(self):
+        if not self.skip_checks:
+            # check for all directives in host
+            for directive in ICINGA_HOST_DIRECTIVES:
+                if not directive in self.host:
+                    raise MandatoryDirectiveMissingException("Mandatory directive %s is missing from host-section" %
+                                                             directive)
+
+            # check for all directives in services
+            for directive in ICINGA_SERVICE_DIRECTIVES:
+                for service in self.services:
+                    if not directive in service:
+                        raise MandatoryDirectiveMissingException("Mandatory directive %s is missing from service %s" %
+                                                                 (directive, service))
+
+
+            # check host_name equal
+            all_host_names = set([service["host_name"] for service in self.services])
+            all_host_names.add(self.host["host_name"])
+
+            if len(all_host_names) > 1:
+                raise HostNamesNotEqualException("More than one host_name was generated: %s" % all_host_names)
+
+            # check service_description is unique
+            used_descriptions = set()
+            multiple_descriptions = set()
+
+            for service in self.services:
+                service_description = service["service_description"]
+                if service_description in used_descriptions:
+                    multiple_descriptions.add(service_description)
+                used_descriptions.add(service_description)
+
+            if len(multiple_descriptions) > 0:
+                raise ServiceDescriptionNotUniqueException("Service description %s used for more than one service" %
+                                                           multiple_descriptions)
+
+
+
+    def generate(self):
+        self.run_pre_generation_checks()
+        self.generate_host_definition()
+        self.generate_service_definitions()
+        self.run_post_generation_checks()
+
+    def generate_host_definition(self):
+        self.host = self.section_with_defaults(self.yaml_config.get('host', {}))
+        self.apply_variables(self.host)
+
+    def generate_service_definitions(self):
+        yaml_services = self.yaml_config.get("services", {})
+        self.services = [self.generate_service_definition(yaml_service) for yaml_service in yaml_services]
+
+    def generate_service_definition(self, service_config):
+        service_definition = self.section_with_defaults(service_config)
+        self.apply_variables(service_definition)
+        return service_definition
+
+    def section_with_defaults(self, section):
+        new_section = {}
+        # put defaults in section first
+        if 'defaults' in self.yaml_config:
+            dict_merge(new_section, self.yaml_config['defaults'])
+        # overwrite defaults with concrete values
+        dict_merge(new_section, section)
+        return new_section
+
+    def apply_variables(self, section):
+        variables = self.yaml_config.get('variables', {})
+
+        sorted_keys = section.keys()
+        sorted_keys.sort()
+
+        while True:
+            variables_applied = False
+            for variable_name in variables.keys():
+                variable_syntax = "${%s}" % variable_name
+                variable_value = str(variables[variable_name])
+
+                # example for: x = 3:
+                # - variable_name == 'x'
+                # - variable_value == '3'
+                # - variable_syntax = '${x}'
+
+                for key in sorted_keys:
+                    value = section.get(key)
+                    # yaml values are not always strings, they can be ints for instance
+                    if isinstance(value, str) and variable_syntax in value:
+                        section[key] = value.replace(variable_syntax, variable_value)
+                        variables_applied = True
+
+            if not variables_applied:
+                break
+
+
+class YamlToIcinga:
+
+    def __init__(self, icinga_generator, indent, etag):
+        self.icinga_lines = []
+        self.indent = indent
+        self.etag = etag
+        self.write_header()
+        self.write_section('host', icinga_generator.host)
+        for service in icinga_generator.services:
+            self.write_section('service', service)
+
+    def write_line(self, line):
+        self.icinga_lines.append(line)
+
+    def write_header(self):
+        timeString = strftime("%Y-%m-%d %H:%M:%S", localtime())
+        self.write_line("%s on %s" % (MON_CONF_GEN_COMMENT, timeString))
+        if self.etag is not None:
+            self.write_line("%s%s" % (ETAG_COMMENT, self.etag))
+
+    def write_section(self, section_name, section_data):
+        self.write_line("")
+        self.write_line("define %s {" % section_name)
+        sorted_keys = section_data.keys()
+        sorted_keys.sort()
+        for key in sorted_keys:
+            value = section_data[key]
+            self.icinga_lines.append(("%s%-45s%s" % (self.indent, key, value)))
+        self.write_line("}")
+
+
+class OutputWriter:
+
+    def __init__(self, output_file):
+        self.logger = logging.getLogger("OutputWriter")
+        self.output_file = output_file
+        default_indent = ' ' * 8
+        self.indent = default_indent
+        self.etag = None
+
+    def write_icinga_config(self, icinga_generator):
+        lines = YamlToIcinga(icinga_generator, self.indent, self.etag).icinga_lines
+        with open(self.output_file, 'w') as f:
+            for line in lines:
+                f.write(line + "\n")
             f.close()
-        self.logger.debug("Created %s" % outputPath)
-        
-        
-    def generateHostDefinition(self, hostname, yamlConfig):
-        hostDefinition = {}
-        hostDefinition = self.fillWithDefaults(yamlConfig, hostDefinition)
-        self.removeEntriesFromDict(hostDefinition, CONFIG['SERVICE_ONLY_DIRECTIVES'])        
+        self.logger.debug("Created %s" % self.output_file)
 
-        if 'host' in yamlConfig:
-            hostDefinition.update(deepcopy(yamlConfig['host']))
-            
-        hostDefinition['address'] = hostname
-        hostDefinition['alias'] = hostname
-        hostDefinition['host_name'] = self.extractHostnameFromFqdn(hostname)
-        return hostDefinition
-            
-    def generateServiceDefinitions(self, hostname, yamlConfig):
-        serviceDefinitions = []
-        servicesConfig = {}
 
-        if 'services' in yamlConfig:        
-            servicesConfig = yamlConfig.get("services", {})
-        elif 'checks' in yamlConfig:
-            servicesConfig = yamlConfig.get("checks", {})
-            self.logger.warn("Host: %s is still using the old yaml format with checks syntax." % hostname)
-        
-            
-        for serviceConfig in servicesConfig:
-            serviceDefinitions.append(self.generateServiceDefinition(hostname, yamlConfig, serviceConfig))
-            
-        return serviceDefinitions
+class ETagReader:
 
-    def generateServiceDefinition(self, hostname, yamlConfig, serviceConfig):
-        serviceDefinition = {}
-        serviceDefinition = self.fillWithDefaults(yamlConfig, serviceDefinition)
-        self.removeEntriesFromDict(serviceDefinition, CONFIG['HOST_ONLY_DIRECTIVES'])
-        serviceDefinition.update(deepcopy(serviceConfig))
+    def __init__(self, fileName):
+        self.fileName = fileName
+        self.etag = None
+        try:
+            if os.path.isfile(fileName):
+                with open(fileName, 'r') as configFile:
+                    for line in configFile.xreadlines():
+                        if line.startswith(ETAG_COMMENT):
+                            etag = line.rstrip()[len(ETAG_COMMENT):]
+                            if len(etag) > 0:
+                                self.etag = etag
+                                return
+        except:
+            # it is totally fine to not have an etag, in that case there
+            # will just be no caching and the server will have to deliver the data again
+            self.etag = None
 
-        if 'type' in serviceDefinition:
-            self.removeEntriesFromDict(serviceDefinition, ['type'])
-            self.logger.warn("Host: %s is still using the old yaml format with type elements in checks." % hostname)
-            
-        serviceDefinition["host_name"] = self.extractHostnameFromFqdn(hostname)
-        return serviceDefinition
-    
-    
-    def fillWithDefaults(self, config, definition):
-        if 'defaults' in config:
-            definition = deepcopy(config['defaults'])
-        return definition
-        
 
-    def fillPlaceholdersInCommand(self, command, config):
-        for attr in config:
-            repl = "${" + attr + "}"
-            if repl in command:
-                command = command.replace(repl, str(config[attr]))
-
-        return command
-
-    def removeEntriesFromDict(self, dict, keys):
-        for key in keys:
-            if key in dict:
-                del dict[key]
-                
-    def extractHostnameFromFqdn(self, hostname):
-        if '.' in hostname:
-            hostname = hostname.split('.')[0]
-        return hostname
-
-def mainMethod():
+def main_method():
+    start_time = datetime.now()
     try:
-        sys.exit(MonitoringConfigGenerator(sys.argv[1:]).generate())
-    except SystemExit:
-        pass
+        exit_code = MonitoringConfigGenerator(sys.argv[1:]).generate()
     except BaseException as e:
-        print >> sys.stderr,"ERROR: " + str(e)
+        print_exc(file=sys.stderr)
+        # logging was initialized inside MonitoringConfigGenerator, that's why we will only get the logger now
+        logging.getLogger("MonitoringConfigGenerator").exception(e)
         sys.exit(1)
+    finally:
+        stop_time = datetime.now()
+        logging.getLogger("MonitoringConfigGenerator").info("finished in %s" % (stop_time - start_time))
+    sys.exit(exit_code)
 
 if __name__ == '__main__':
-    mainMethod()
+    main_method()
