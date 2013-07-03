@@ -1,0 +1,10 @@
+variables:
+    TYP: host
+    LOC: test
+    HOSTNR: '07'
+    DOMAIN_NAME: other.domain
+    GRP_HOST: testgrp05
+    HOST_NAME: ${LOC}${TYP}${HOSTNR}
+    NORMAL_CHECK_INTERVAL: 3
+    NORMAL_RETRY_INTERVAL: 5
+    FQDN: ${HOST_NAME}.${DOMAIN_NAME}

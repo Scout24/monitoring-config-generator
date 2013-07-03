@@ -1,0 +1,13 @@
+defaults:
+    host_name: ${HOST_NAME}
+    notification_period: 24x7
+    check_period: 24x7
+    contact_groups: testdienst
+    notification_interval: 0
+    notification_options: u,c,r
+    max_check_attempts: 5
+    check_interval: ${NORMAL_CHECK_INTERVAL}
+    retry_interval: ${NORMAL_RETRY_INTERVAL}
+    contacts:
+        - contact1
+        - contact2
