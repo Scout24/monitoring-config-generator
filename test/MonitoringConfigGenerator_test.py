@@ -76,6 +76,9 @@ class Test(unittest.TestCase):
 
     def test_generated_config_using_defaults_and_variables(self):
         self.run_config_generator_on_directory("itest_testhost05_variables")
+    
+    def test_generated_config_with_list_with_quotes(self):
+        self.run_config_generator_on_directory("itest_testhost10_quotes")
 
     
     def test_some_edge_cases(self):

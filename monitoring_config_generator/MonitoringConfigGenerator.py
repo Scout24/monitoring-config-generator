@@ -1,4 +1,3 @@
-import csv
 from datetime import datetime
 import io
 import logging
@@ -365,17 +364,20 @@ class YamlToIcinga:
             return str(value)
 
     @staticmethod
-    def list_to_csv(value):
+    def list_to_csv(values):
         """This method will convert a list of values into a csv string."""
-        # using ",".join(values) as CVS formatter is an invitation for trouble,
-        # lets rather use the proper csv.writer to do the CSV-formatting:
-        bytes_io = io.BytesIO()
-        csv.writer(bytes_io).writerow(value)
-        csv_lines = bytes_io.getvalue()
-        bytes_io.close()
-        first_csv_line_without_eol = csv_lines.split("\n")[0].rstrip()
-        return first_csv_line_without_eol
-
+	separator = ','
+	result = ""
+	firstItem = True
+		
+	for value in values:
+		if not firstItem:
+			result = result + separator
+		else:
+			firstItem=False
+		if value != None:
+			result = result + str(value)
+	return result
 
 class OutputWriter:
 
@@ -388,7 +390,7 @@ class OutputWriter:
 
     def write_icinga_config(self, icinga_generator):
         lines = YamlToIcinga(icinga_generator, self.indent, self.etag).icinga_lines
-        with open(self.output_file, 'w') as f:
+	with open(self.output_file, 'w') as f:
             for line in lines:
                 f.write(line + "\n")
             f.close()
