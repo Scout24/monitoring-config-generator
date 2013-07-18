@@ -1,0 +1,41 @@
+defaults:
+    host_name: ${HOST_NAME}
+    notification_period: 24x7
+    check_period: 24x7
+    contact_groups: testdienst
+    notification_interval: 0
+    notification_options: u,c,r
+    max_check_attempts: 5
+    check_interval: ${NORMAL_CHECK_INTERVAL}
+    retry_interval: ${NORMAL_RETRY_INTERVAL}
+
+variables:
+    TYP: host
+    LOC: test
+    HOSTNR: '08'
+    DOMAIN_NAME: other.domain
+    GRP_HOST: testgrp05
+    HOST_NAME: ${LOC}${TYP}${HOSTNR}
+    NORMAL_CHECK_INTERVAL: 3
+    NORMAL_RETRY_INTERVAL: 5
+    FQDN: ${HOST_NAME}.${DOMAIN_NAME}
+host:
+    address: ${FQDN}
+    check_command: check-host-alive
+    notification_interval: 30
+    notification_options: d,u,r
+    process_perf_data: 1
+    retain_nonstatus_information: 1
+services:
+-   _description: hier kommt die Beschreibung rein.
+    check_command: check_httpd!/mietcheck/internal/status!80!"OK - Service is running"
+    normal_check_interval: ${NORMAL_CHECK_INTERVAL}
+    retry_check_interval: 1
+    service_description: httpd
+    an_undefined_variable: ${AN_UNDEFINED_VARIABLE}
+-   _description: hier kommt die Beschreibung rein.
+    action_url: http://${GRP_HOST}/render/?from=-${NORMAL_CHECK_INTERVAL}min&target=alias(asPercent(${TYP}.${HOST_NAME}.system.diskspace._data.byte_used,sumSeries(${TYP}.${HOST_NAME}.system.diskspace._data.byte_used,${TYP}.${HOST_NAME}.system.diskspace._data.byte_free)),'disk_usage')
+    check_command: check_graphite!90!95
+    normal_check_interval: ${NORMAL_CHECK_INTERVAL}
+    retry_check_interval: 1
+    service_description: diskusage-data

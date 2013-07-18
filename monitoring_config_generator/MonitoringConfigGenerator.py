@@ -112,9 +112,33 @@ Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG enviro
         self.icinga_generator = IcingaGenerator(self.input_reader.hostname, self.yaml_config)
         self.icinga_generator.skip_checks = self.options.skip_checks
         self.icinga_generator.generate()
-        self.write_output()
-        return 0
+        if(not self.configuration_contains_undefined_variables()):
+		self.write_output()
+        	return 0
+	else:
+		self.logger.error("Configuration contained undefined variables!")
+		return 1
 
+    def host_configuration_contains_undefined_variables(self):
+	host_settings = self.icinga_generator.host
+	for setting_key in host_settings:
+		if "${" in str(host_settings[setting_key]):
+			return True
+ 	return False
+
+    
+    def service_configuration_contains_undefined_variables(self):
+	for settings_of_single_service in self.icinga_generator.services:
+		for setting_key in settings_of_single_service:
+			if "${" in str(settings_of_single_service[setting_key]):
+				return True	
+	return False
+
+
+    def configuration_contains_undefined_variables(self):
+	return self.host_configuration_contains_undefined_variables() or \
+		self.service_configuration_contains_undefined_variables()  	
+ 
     def write_output(self):
         self.output_writer = OutputWriter(self.input_reader.output_path)
         self.output_writer.indent = CONFIG['INDENT']
@@ -280,7 +304,7 @@ class IcingaGenerator:
 
         sorted_keys = section.keys()
         sorted_keys.sort()
-
+	
         while True:
             variables_applied = False
             for variable_name in variables.keys():

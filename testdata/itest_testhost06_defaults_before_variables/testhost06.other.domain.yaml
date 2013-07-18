@@ -31,19 +31,3 @@ services:
 #   this should become x=23 and y=42, cause attribute x is independent of variable x
 -   service_description: service2
     x: 23
-
-#   this should become 
-#   x=${y}, cause y is a default but not a variable
-#   y=4242, cause default does not apply here, but var does
--   service_description: service3
-    x: ${y}
-    y: ${x}${x}
-
-#   this should become
-#   x = 42, cause var x will replace value in x 
-#   y = 42${y}42 cause ${x} is a variable but ${y} is not a variable and thus should not be replaced
--   service_description: service4
-    x: ${x}
-    y: ${x}${y}${x}
-
-
