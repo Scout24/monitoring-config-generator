@@ -112,31 +112,31 @@ Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG enviro
         self.icinga_generator.skip_checks = self.options.skip_checks
         self.icinga_generator.generate()
         if(not self.configuration_contains_undefined_variables()):
-		self.write_output()
-        	return 0
-	else:
-		self.logger.error("Configuration contained undefined variables!")
-		return 1
+            self.write_output()
+            return 0
+        else:
+            self.logger.error("Configuration contained undefined variables!")
+            return 1
 
     def host_configuration_contains_undefined_variables(self):
-	host_settings = self.icinga_generator.host
-	for setting_key in host_settings:
-		if "${" in str(host_settings[setting_key]):
-			return True
- 	return False
+        host_settings = self.icinga_generator.host
+        for setting_key in host_settings:
+            if "${" in str(host_settings[setting_key]):
+                return True
+        return False
 
     
     def service_configuration_contains_undefined_variables(self):
-	for settings_of_single_service in self.icinga_generator.services:
-		for setting_key in settings_of_single_service:
-			if "${" in str(settings_of_single_service[setting_key]):
-				return True	
-	return False
+        for settings_of_single_service in self.icinga_generator.services:
+            for setting_key in settings_of_single_service:
+                if "${" in str(settings_of_single_service[setting_key]):
+                    return True	
+        return False
 
 
     def configuration_contains_undefined_variables(self):
-	return self.host_configuration_contains_undefined_variables() or \
-		self.service_configuration_contains_undefined_variables()  	
+        return self.host_configuration_contains_undefined_variables() or \
+            self.service_configuration_contains_undefined_variables()  	
  
     def write_output(self):
         self.output_writer = OutputWriter(self.input_reader.output_path)
@@ -209,7 +209,7 @@ class InputReader:
                 self.etag = oldEtag
             else:
                 raise MonitoringConfigGeneratorException("Host %s returned with status %s.  "
-                                                         "I don't know how to handle that." %
+                                                         "I don't know how to handle that." % 
                                                              (self.hostname, status))
         except Exception, e:
             self.logger.error("Problem retrieving config for %s from %s" % (self.hostname, url), exc_info=True)
@@ -237,14 +237,14 @@ class IcingaGenerator:
             # check for all directives in host
             for directive in ICINGA_HOST_DIRECTIVES:
                 if not directive in self.host:
-                    raise MandatoryDirectiveMissingException("Mandatory directive %s is missing from host-section" %
+                    raise MandatoryDirectiveMissingException("Mandatory directive %s is missing from host-section" % 
                                                              directive)
 
             # check for all directives in services
             for directive in ICINGA_SERVICE_DIRECTIVES:
                 for service in self.services:
                     if not directive in service:
-                        raise MandatoryDirectiveMissingException("Mandatory directive %s is missing from service %s" %
+                        raise MandatoryDirectiveMissingException("Mandatory directive %s is missing from service %s" % 
                                                                  (directive, service))
 
 
@@ -266,7 +266,7 @@ class IcingaGenerator:
                 used_descriptions.add(service_description)
 
             if len(multiple_descriptions) > 0:
-                raise ServiceDescriptionNotUniqueException("Service description %s used for more than one service" %
+                raise ServiceDescriptionNotUniqueException("Service description %s used for more than one service" % 
                                                            multiple_descriptions)
 
 
@@ -303,7 +303,7 @@ class IcingaGenerator:
 
         sorted_keys = section.keys()
         sorted_keys.sort()
-	
+
         while True:
             variables_applied = False
             for variable_name in variables.keys():
@@ -366,18 +366,18 @@ class YamlToIcinga:
     @staticmethod
     def list_to_csv(values):
         """This method will convert a list of values into a csv string."""
-	separator = ','
-	result = ""
-	firstItem = True
-		
-	for value in values:
-		if not firstItem:
-			result = result + separator
-		else:
-			firstItem=False
-		if value != None:
-			result = result + str(value)
-	return result
+        separator = ','
+        result = ""
+        firstItem = True
+
+        for value in values:
+            if not firstItem:
+                result = result + separator
+            else:
+                firstItem = False
+            if value != None:
+                result = result + str(value)
+        return result
 
 class OutputWriter:
 
@@ -390,7 +390,7 @@ class OutputWriter:
 
     def write_icinga_config(self, icinga_generator):
         lines = YamlToIcinga(icinga_generator, self.indent, self.etag).icinga_lines
-	with open(self.output_file, 'w') as f:
+        with open(self.output_file, 'w') as f:
             for line in lines:
                 f.write(line + "\n")
             f.close()
