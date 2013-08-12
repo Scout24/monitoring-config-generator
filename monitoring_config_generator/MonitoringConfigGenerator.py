@@ -223,6 +223,7 @@ class IcingaGenerator:
         self.hostname = hostname
         self.yaml_config = yaml_config
         self.skip_checks = False
+        self.services = []
 
     def run_pre_generation_checks(self):
         if not self.skip_checks:
@@ -282,10 +283,14 @@ class IcingaGenerator:
 
     def generate_service_definitions(self):
         yaml_services = self.yaml_config.get("services", {})
-        self.services = [self.generate_service_definition(yaml_service) for yaml_service in yaml_services]
+        if not type(yaml_services) is type({}):
+            raise MonitoringConfigGeneratorException("services must be a dict")
+        for yaml_service_id in sorted(yaml_services.keys()):
+            self.services.append(self.generate_service_definition(yaml_services[yaml_service_id], yaml_service_id))
 
-    def generate_service_definition(self, service_config):
-        service_definition = self.section_with_defaults(service_config)
+    def generate_service_definition(self, yaml_service,yaml_service_id):
+        service_definition = self.section_with_defaults(yaml_service)
+        service_definition["_service_id"] = yaml_service_id
         self.apply_variables(service_definition)
         return service_definition
 

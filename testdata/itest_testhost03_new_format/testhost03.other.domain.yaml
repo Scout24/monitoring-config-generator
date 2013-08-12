@@ -14,7 +14,8 @@ host:
     retry_interval: 5
 
 services:
--   _description: hier kommt die Beschreibung rein.
+  mietcheck_status:
+    _description: hier kommt die Beschreibung rein.
     check_command: check_httpd!/mietcheck/internal/status!80!"OK - Service is running"
     check_period: 24x7
     contact_groups: testdienst
@@ -29,7 +30,8 @@ services:
     service_description: httpd
     check_interval: 3
     retry_interval: 5
--   _description: hier kommt die Beschreibung rein.
+  diskusage_data:
+    _description: hier kommt die Beschreibung rein.
     action_url: http://testgrp03/render/?from=-3min&target=alias(asPercent(host.testhost03.system.diskspace._data.byte_used,sumSeries(host.testhost03.system.diskspace._data.byte_used,host.testhost03.system.diskspace._data.byte_free)),'disk_usage')
     check_command: check_graphite!90!95
     check_period: 24x7

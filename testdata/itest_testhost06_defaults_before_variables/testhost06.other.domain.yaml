@@ -26,8 +26,10 @@ host:
 
 services:
 #   this should become y=42 obviously
--   service_description: service1
+  service1:
+     service_description: service1
 
 #   this should become x=23 and y=42, cause attribute x is independent of variable x
--   service_description: service2
-    x: 23
+  service2:
+     service_description: service2
+     x: 23

@@ -125,7 +125,8 @@ class Test(unittest.TestCase):
                 host_name: testhost01
 
             services:
-                -  check_command: check_graphite_disk_usage!_boot!90!95
+                s1:
+                   check_command: check_graphite_disk_usage!_boot!90!95
                    host_name: testhost01
                    service_description: service 1
             defaults:
@@ -208,7 +209,8 @@ class Test(unittest.TestCase):
                     retry_interval: 7
 
             services:
-                -   service_description: 234
+                s1:
+                    service_description: 234
                     check_command: check_graphite_disk_usage!_boot!90!95
         '''
         hostname = "testhost01"
@@ -219,7 +221,8 @@ class Test(unittest.TestCase):
     def test_generates_check_definition(self):
         input_yaml = '''
             services:
-                -   check_command: check_graphite_disk_usage!_boot!90!95
+                s1:
+                    check_command: check_graphite_disk_usage!_boot!90!95
                     service_description: service 1
             defaults:
                 check_command: check_graphite_disk_usage!_data!90!95
@@ -250,7 +253,8 @@ class Test(unittest.TestCase):
                 retry_interval: 7
 
             services:
-                - service_description: service1
+                s1:
+                  service_description: service1
                   check_command: commando
         '''
         
@@ -260,6 +264,25 @@ class Test(unittest.TestCase):
         self.assertEquals(self.service_definitions[0].get("check_command"), "commando")
         self.assertEquals(self.service_definitions[0].get("check_period"), "24x7")
         self.assertEquals(self.service_definitions[0].get("max_check_attempts"), 5)
+
+    def test_that_service_id_is_set(self):
+        input_yaml = '''
+            defaults:
+                check_period:   24x7
+                host_name:    foobar
+                max_check_attempts: 1
+                notification_interval: 1
+                notification_period: no_idea
+
+            services:
+                s1:
+                  service_description: service1
+                  check_command: commando
+        '''
+        
+        hostname = "testhost01"
+        self.run_config_gen(hostname, input_yaml)
+        self.assertEquals(self.service_definitions[0].get("_service_id"), "s1")
 
     def test_that_host_only_defaults_are_no_longer_supported(self):
         """the old version automatically removed some directives that only applied to hosts from services
@@ -282,7 +305,8 @@ class Test(unittest.TestCase):
                 retry_interval: 7
 
             services:
-                - service_description: service 1
+                s1:
+                  service_description: service 1
                   check_command: commando
         '''
 
@@ -316,7 +340,8 @@ class Test(unittest.TestCase):
         """if the generated output contains a service section with no host_name, an exception should be thrown"""
         input_yaml = '''
             services:
-                - check_command: commando
+                s1:
+                   check_command: commando
         '''
         hostname = "testhost01"
         self.assertRaises(MandatoryDirectiveMissingException, self.run_config_gen, hostname, input_yaml)
@@ -344,10 +369,12 @@ class Test(unittest.TestCase):
                 host_name: testhost01
 
             services:
-                -  service_description: service 1
+                s1:
+                   service_description: service 1
                    check_command: cmd1
                    host_name: testhost01
-                -  service_description: service 2
+                s2:
+                   service_description: service 2
                    check_command: cmd2
                    host_name: testhost02
         '''
@@ -369,10 +396,12 @@ class Test(unittest.TestCase):
                 host_name: testhost01
 
             services:
-                -  service_description: service 1
+                s1:
+                   service_description: service 1
                    check_command: cmd1
                    host_name: testhost01
-                -  service_description: service 1
+                s2:
+                   service_description: service 1
                    check_command: cmd2
                    host_name: testhost01
         '''

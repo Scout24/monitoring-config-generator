@@ -27,12 +27,14 @@ host:
     process_perf_data: 1
     retain_nonstatus_information: 1
 services:
--   _description: hier kommt die Beschreibung rein.
+  mietcheck_status:
+    _description: hier kommt die Beschreibung rein.
     check_command: check_httpd!/mietcheck/internal/status!80!"OK - Service is running"
     normal_check_interval: ${NORMAL_CHECK_INTERVAL}
     retry_check_interval: 1
     service_description: httpd
--   _description: hier kommt die Beschreibung rein.
+  diskusage_data:
+    _description: hier kommt die Beschreibung rein.
     action_url: http://${GRP_HOST}/render/?from=-${NORMAL_CHECK_INTERVAL}min&target=alias(asPercent(${TYP}.${HOST_NAME}.system.diskspace._data.byte_used,sumSeries(${TYP}.${HOST_NAME}.system.diskspace._data.byte_used,${TYP}.${HOST_NAME}.system.diskspace._data.byte_free)),'disk_usage')
     check_command: check_graphite!90!95
     normal_check_interval: ${NORMAL_CHECK_INTERVAL}
