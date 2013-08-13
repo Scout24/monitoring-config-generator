@@ -413,14 +413,19 @@ def main_method():
     start_time = datetime.now()
     try:
         exit_code = MonitoringConfigGenerator(sys.argv[1:]).generate()
+    except SystemExit as e:
+        exit_code = e.code
     except BaseException as e:
-        print_exc(file=sys.stderr)
         # logging was initialized inside MonitoringConfigGenerator, that's why we will only get the logger now
-        logging.getLogger("MonitoringConfigGenerator").exception(e)
-        sys.exit(1)
+        log = logging.getLogger()
+        log.exception(e)
+        if log.level is not logging.DEBUG:
+            # debug log already prints error, don't print it again
+            print >>sys.stderr, 'ERROR: %s' % e.message
+        exit_code = 1
     finally:
         stop_time = datetime.now()
-        logging.getLogger("MonitoringConfigGenerator").info("finished in %s" % (stop_time - start_time))
+        logging.getLogger().info("finished in %s" % (stop_time - start_time))
     sys.exit(exit_code)
 
 if __name__ == '__main__':

@@ -49,7 +49,7 @@ def read_config(cfile=CONFIG_FILE):
         config_file.close()
         CONFIG = dict(DEF_CONFIG.items() + new_config.items())
     else:
-        print >>sys.stderr, 'config %s not found' % cfile
+        print >>sys.stderr, 'WARNING: config %s not found, using builtin defaults' % cfile
         CONFIG = DEF_CONFIG
     return CONFIG
 
