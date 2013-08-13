@@ -39,34 +39,34 @@ class Test(unittest.TestCase):
         output_path = os.path.join(CONFIG['TARGET_DIR'], config_file)
         expected_output_path = os.path.join(this_test_dir, config_file)
 
-	self.assert_no_undefined_variables(output_path)
+        self.assert_no_undefined_variables(output_path)
         self.assert_that_contents_of_files_is_identical(output_path, expected_output_path)
 
     def assert_no_undefined_variables(self, filename):
-	generated_config_file = file(filename)
+        generated_config_file = file(filename)
         for line in generated_config_file:
-        	self.assertFalse("${" in line,"found undefined variable in " + filename)
+            self.assertFalse("${" in line,"found undefined variable in " + filename)
 
     def get_yaml_file_from_directory(self,directory): 
         input_directory = os.path.join(self.testDir, directory)
         all_yaml = [filename for filename in os.listdir(input_directory) if filename.endswith(".yaml")]
         self.assertEquals(1, len(all_yaml))
-	yaml_file = all_yaml[0]
+        yaml_file = all_yaml[0]
         yaml_file_with_path = os.path.abspath(os.path.join(input_directory, yaml_file))
-	return yaml_file_with_path
+        return yaml_file_with_path
 
     def run_config_generator_for_invalid_file(self, input_dir, generated_configuration_filename): 
         yaml_file = self.get_yaml_file_from_directory(input_dir) 
         MonitoringConfigGenerator(yaml_file).generate()
         output_path = os.path.join(CONFIG['TARGET_DIR'],generated_configuration_filename)
-	self.assertFalse(os.path.exists(output_path),"Generator generated file for undefined variables")
+        self.assertFalse(os.path.exists(output_path),"Generator generated file for undefined variables")
  
 
     def test_generated_config_with_missing__variable(self):
-	self.run_config_generator_for_invalid_file("itest_testhost08_variables","testhost08.other.domain.cfg")
+        self.run_config_generator_for_invalid_file("itest_testhost08_variables","testhost08.other.domain.cfg")
     
     def test_generated_config_with_missing_service_variable(self):
-	self.run_config_generator_for_invalid_file("itest_testhost09_variables","testhost09.other.domain.cfg")
+        self.run_config_generator_for_invalid_file("itest_testhost09_variables","testhost09.other.domain.cfg")
 
     def test_generates_config_from_new_file(self):
         self.run_config_generator_on_directory("itest_testhost03_new_format")

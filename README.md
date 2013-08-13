@@ -4,6 +4,120 @@ monitoring-config-generator
 Monitoring Config Generator reads a monitoring configuration as
 YAML-data and writes an Icinga-configuration file as output.
 
+Example YAML input:
+
+```yaml
+defaults:
+    host_name: ${HOST_NAME}
+    notification_period: 24x7
+    check_period: 24x7
+    contact_groups: testdienst
+    notification_interval: 0
+    notification_options: u,c,r
+    max_check_attempts: 5
+    check_interval: ${NORMAL_CHECK_INTERVAL}
+    retry_interval: ${NORMAL_RETRY_INTERVAL}
+
+variables:
+    TYP: host
+    LOC: test
+    HOSTNR: '05'
+    DOMAIN_NAME: other.domain
+    GRP_HOST: testgrp05
+    HOST_NAME: ${LOC}${TYP}${HOSTNR}
+    NORMAL_CHECK_INTERVAL: 3
+    NORMAL_RETRY_INTERVAL: 5
+    FQDN: ${HOST_NAME}.${DOMAIN_NAME}
+host:
+    _processes:
+      - "\"httpd -d\""
+      - "\"icinga --config file\""
+    address: ${FQDN}
+    check_command: check-host-alive
+    notification_interval: 30
+    notification_options: d,u,r
+    process_perf_data: 1
+    retain_nonstatus_information: 1
+services:
+  mietcheck_status:
+    _description: hier kommt die Beschreibung rein.
+    check_command: check_httpd!/mietcheck/internal/status!80!"OK - Service is running"
+    normal_check_interval: ${NORMAL_CHECK_INTERVAL}
+    retry_check_interval: 1
+    service_description: httpd
+  diskusage_data:
+    _description: hier kommt die Beschreibung rein.
+    action_url: http://${GRP_HOST}/render/?from=-${NORMAL_CHECK_INTERVAL}min&target=alias(asPercent(${TYP}.${HOST_NAME}.system.diskspace._data.byte_used,sumSeries(${TYP}.${HOST_NAME}.system.diskspace._data.byte_used,${TYP}.${HOST_NAME}.system.diskspace._data.byte_free)),'disk_usage')
+    check_command: check_graphite!90!95
+    normal_check_interval: ${NORMAL_CHECK_INTERVAL}
+    retry_check_interval: 1
+    service_description: diskusage-data
+```
+
+This is a complex example that shows all the features. Important things to notice:
+* Variable substitution happens at the very end
+* Service IDs and service_descriptions must be unique.
+* Don't use a tag _service_id, this will be filled with the ID of the service.
+* This YAML could be split into several files that are merged on run-time (see below).
+
+The resulting Icinga/Nagios configuration looks like this:
+```
+# Created by MonitoringConfigGenerator on 2013-06-26 13:07:05
+
+define host {
+        _processes                                   "httpd -d","icinga --config file"
+        address                                      testhost05.other.domain
+        check_command                                check-host-alive
+        check_interval                               3
+        check_period                                 24x7
+        contact_groups                               testdienst
+        host_name                                    testhost05
+        max_check_attempts                           5
+        notification_interval                        30
+        notification_options                         d,u,r
+        notification_period                          24x7
+        process_perf_data                            1
+        retain_nonstatus_information                 1
+        retry_interval                               5
+}
+
+define service {
+        _description                                 hier kommt die Beschreibung rein.
+        _service_id                                  diskusage_data
+        action_url                                   http://testgrp05/render/?from=-3min&target=alias(asPercent(host.testhost05.system.diskspace._data.byte_used,sumSeries(host.testhost05.system.diskspace._data.byte_used,host.testhost05.system.diskspace._data.byte_free)),'disk_usage')
+        check_command                                check_graphite!90!95
+        check_interval                               3
+        check_period                                 24x7
+        contact_groups                               testdienst
+        host_name                                    testhost05
+        max_check_attempts                           5
+        normal_check_interval                        3
+        notification_interval                        0
+        notification_options                         u,c,r
+        notification_period                          24x7
+        retry_check_interval                         1
+        retry_interval                               5
+        service_description                          diskusage-data
+}
+
+define service {
+        _description                                 hier kommt die Beschreibung rein.
+        _service_id                                  mietcheck_status
+        check_command                                check_httpd!/mietcheck/internal/status!80!"OK - Service is running"
+        check_interval                               3
+        check_period                                 24x7
+        contact_groups                               testdienst
+        host_name                                    testhost05
+        max_check_attempts                           5
+        normal_check_interval                        3
+        notification_interval                        0
+        notification_options                         u,c,r
+        notification_period                          24x7
+        retry_check_interval                         1
+        retry_interval                               5
+        service_description                          httpd
+}
+```
 
 yaml-server => monitoring-config-generator => Icinga
 ----------------------------------------------------

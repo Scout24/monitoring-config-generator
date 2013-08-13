@@ -363,26 +363,13 @@ class YamlToIcinga:
 
     @staticmethod
     def value_to_icinga(value):
-        if isinstance(value, list):
-            return YamlToIcinga.list_to_csv(value)
+        """Convert a scalar or list to Icinga value format. Lists are concatenated by , 
+        and empty (None) values produce an empty string"""
+        if type(value) is type([]):
+            # explicitly set None values to empty string
+            return ",".join([str(x) if (x is not None) else "" for x in value])
         else:
             return str(value)
-
-    @staticmethod
-    def list_to_csv(values):
-        """This method will convert a list of values into a csv string."""
-        separator = ','
-        result = ""
-        firstItem = True
-
-        for value in values:
-            if not firstItem:
-                result = result + separator
-            else:
-                firstItem = False
-            if value != None:
-                result = result + str(value)
-        return result
 
 class OutputWriter:
 
