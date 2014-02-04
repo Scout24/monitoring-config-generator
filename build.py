@@ -18,7 +18,7 @@ authors = [Author('Schlomo Schapiro', ''),
 license="GPL"
 description="Get monitoring configuration in YAML format via HTTP and generate icinga host and check config"
 summary = "Fluent interface facade for Michael Foord's mock."
-version = '4'
+version = '5'
 url="https://github.com/ImmobilienScout24/monitoring-config-generator.git"
 
 
