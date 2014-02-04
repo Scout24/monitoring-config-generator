@@ -9,7 +9,12 @@ use_plugin('python.distutils')
 name = "monitoring-config-generator"
 default_task = "publish"
 
-authors = [Author('Schlomo Schapiro', ''), Author('Sven Schindler', '')]
+authors = [Author('Schlomo Schapiro', ''),
+           Author('Sven Schindler', ''),
+           Author('Jan Gaedicke', ''),
+           Author('Valentin Haenel', ''),
+           Author('Marco Hoyer', ''),
+           ]
 license="GPL"
 description="Get monitoring configuration in YAML format via HTTP and generate icinga host and check config"
 summary = "Fluent interface facade for Michael Foord's mock."
