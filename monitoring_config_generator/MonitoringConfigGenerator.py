@@ -123,14 +123,12 @@ Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG enviro
                 return True
         return False
 
-
     def service_configuration_contains_undefined_variables(self):
         for settings_of_single_service in self.icinga_generator.services:
             for setting_key in settings_of_single_service:
                 if "${" in str(settings_of_single_service[setting_key]):
                     return True
         return False
-
 
     def configuration_contains_undefined_variables(self):
         return self.host_configuration_contains_undefined_variables() or \
@@ -245,7 +243,6 @@ class IcingaGenerator(object):
                         raise MandatoryDirectiveMissingException("Mandatory directive %s is missing from service %s" %
                                                                  (directive, service))
 
-
             # check host_name equal
             all_host_names = set([service["host_name"] for service in self.services])
             all_host_names.add(self.host["host_name"])
@@ -267,7 +264,6 @@ class IcingaGenerator(object):
                 raise ServiceDescriptionNotUniqueException("Service description %s used for more than one service" %
                                                            multiple_descriptions)
 
-
     def generate(self):
         self.run_pre_generation_checks()
         self.generate_host_definition()
@@ -285,7 +281,7 @@ class IcingaGenerator(object):
         for yaml_service_id in sorted(yaml_services.keys()):
             self.services.append(self.generate_service_definition(yaml_services[yaml_service_id], yaml_service_id))
 
-    def generate_service_definition(self, yaml_service,yaml_service_id):
+    def generate_service_definition(self, yaml_service, yaml_service_id):
         service_definition = self.section_with_defaults(yaml_service)
         service_definition["_service_id"] = yaml_service_id
         self.apply_variables(service_definition)
@@ -367,6 +363,7 @@ class YamlToIcinga(object):
             return ",".join([str(x) if (x is not None) else "" for x in value])
         else:
             return str(value)
+
 
 class OutputWriter(object):
 

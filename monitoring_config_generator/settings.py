@@ -6,13 +6,12 @@ import yaml
 # for local testing use MONITORING_CONFIG_GENERATOR_CONFIG=../testdata/testconfig.yaml
 
 # ica servers
-DEF_CONFIG = {
-                'TARGET_DIR' : '/etc/icinga/conf.d/generated',
-                'INDENT' : '        ',
-                'META_KEYS' : [],
-                'PORT' : "8935",
-                'RESOURCE' : "/monitoring",
-               }
+DEF_CONFIG = {'TARGET_DIR': '/etc/icinga/conf.d/generated',
+              'INDENT': '        ',
+              'META_KEYS': [],
+              'PORT': "8935",
+              'RESOURCE': "/monitoring",
+              }
 
 CONFIG_FILE = '/etc/monitoring_config_generator/config.yaml'
 # get config file
@@ -39,6 +38,7 @@ ICINGA_SERVICE_DIRECTIVES = ["host_name",
                              "check_period",
                              "notification_interval",
                              "notification_period"]
+
 
 def read_config(cfile=CONFIG_FILE):
     # merge defaults with config from config file
