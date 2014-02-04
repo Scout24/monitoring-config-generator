@@ -19,7 +19,7 @@ ETAG_COMMENT = '# ETag: '
 SUPPORTED_SECTIONS = ['defaults', 'variables', 'host', 'services']
 
 
-class MonitoringConfigGenerator:
+class MonitoringConfigGenerator(object):
 
     def __init__(self, args=None):
         if args:
@@ -143,7 +143,7 @@ Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG enviro
         self.output_writer.write_icinga_config(self.icinga_generator)
 
 
-class InputReader:
+class InputReader(object):
 
     def __init__(self, input_name, target_dir):
         self.logger = logging.getLogger("InputReader")
@@ -215,7 +215,7 @@ class InputReader:
             self.yaml_config = None
 
 
-class IcingaGenerator:
+class IcingaGenerator(object):
     def __init__(self, yaml_config):
         self.logger = logging.getLogger("IcingaGenerator")
         self.yaml_config = yaml_config
@@ -328,7 +328,7 @@ class IcingaGenerator:
                 break
 
 
-class YamlToIcinga:
+class YamlToIcinga(object):
 
     def __init__(self, icinga_generator, indent, etag):
         self.icinga_lines = []
@@ -368,7 +368,7 @@ class YamlToIcinga:
         else:
             return str(value)
 
-class OutputWriter:
+class OutputWriter(object):
 
     def __init__(self, output_file):
         self.logger = logging.getLogger("OutputWriter")
@@ -386,7 +386,7 @@ class OutputWriter:
         self.logger.debug("Created %s" % self.output_file)
 
 
-class ETagReader:
+class ETagReader(object):
 
     def __init__(self, fileName):
         self.fileName = fileName
