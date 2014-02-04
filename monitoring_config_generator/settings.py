@@ -3,7 +3,7 @@ import sys
 import yaml
 
 
-# for local testing use MONITORING_CONFIG_GENERATOR_CONFIG=../testdata/testconfig.yaml 
+# for local testing use MONITORING_CONFIG_GENERATOR_CONFIG=../testdata/testconfig.yaml
 
 # ica servers
 DEF_CONFIG = {

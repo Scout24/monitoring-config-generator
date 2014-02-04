@@ -64,7 +64,7 @@ Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG enviro
         if not os.path.isdir(self.target_dir):
             raise MonitoringConfigGeneratorException("%s is not a directory" % self.target_dir)
         self.logger.debug("Using %s as target dir" % self.target_dir)
-        
+
         if len(self.args) < 1:
             self.logger.fatal("Need to get at least one host to operate on")
             raise MonitoringConfigGeneratorException("Need to get at least one host to operate on")
@@ -123,19 +123,19 @@ Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG enviro
                 return True
         return False
 
-    
+
     def service_configuration_contains_undefined_variables(self):
         for settings_of_single_service in self.icinga_generator.services:
             for setting_key in settings_of_single_service:
                 if "${" in str(settings_of_single_service[setting_key]):
-                    return True	
+                    return True
         return False
 
 
     def configuration_contains_undefined_variables(self):
         return self.host_configuration_contains_undefined_variables() or \
-            self.service_configuration_contains_undefined_variables()  	
- 
+            self.service_configuration_contains_undefined_variables()
+
     def write_output(self):
         self.output_writer = OutputWriter(self.input_reader.output_path)
         self.output_writer.indent = CONFIG['INDENT']
@@ -207,7 +207,7 @@ class InputReader(object):
                 self.etag = oldEtag
             else:
                 raise MonitoringConfigGeneratorException("Host %s returned with status %s.  "
-                                                         "I don't know how to handle that." % 
+                                                         "I don't know how to handle that." %
                                                              (self.hostname, status))
         except Exception, e:
             self.logger.error("Problem retrieving config for %s from %s" % (self.hostname, url), exc_info=True)
@@ -235,14 +235,14 @@ class IcingaGenerator(object):
             # check for all directives in host
             for directive in ICINGA_HOST_DIRECTIVES:
                 if not directive in self.host:
-                    raise MandatoryDirectiveMissingException("Mandatory directive %s is missing from host-section" % 
+                    raise MandatoryDirectiveMissingException("Mandatory directive %s is missing from host-section" %
                                                              directive)
 
             # check for all directives in services
             for directive in ICINGA_SERVICE_DIRECTIVES:
                 for service in self.services:
                     if not directive in service:
-                        raise MandatoryDirectiveMissingException("Mandatory directive %s is missing from service %s" % 
+                        raise MandatoryDirectiveMissingException("Mandatory directive %s is missing from service %s" %
                                                                  (directive, service))
 
 
@@ -264,7 +264,7 @@ class IcingaGenerator(object):
                 used_descriptions.add(service_description)
 
             if len(multiple_descriptions) > 0:
-                raise ServiceDescriptionNotUniqueException("Service description %s used for more than one service" % 
+                raise ServiceDescriptionNotUniqueException("Service description %s used for more than one service" %
                                                            multiple_descriptions)
 
 
@@ -360,7 +360,7 @@ class YamlToIcinga(object):
 
     @staticmethod
     def value_to_icinga(value):
-        """Convert a scalar or list to Icinga value format. Lists are concatenated by , 
+        """Convert a scalar or list to Icinga value format. Lists are concatenated by ,
         and empty (None) values produce an empty string"""
         if type(value) is type([]):
             # explicitly set None values to empty string
