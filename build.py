@@ -26,3 +26,8 @@ url="https://github.com/ImmobilienScout24/monitoring-config-generator.git"
 def set_properties(project):
     project.depends_on('pyyaml')
     project.depends_on('httplib2')
+    project.set_property('distutils_classifiers', [
+        "Development Status :: 4 - Beta",
+        "Topic :: Utilities",
+        "Programming Language :: Python",
+        ])
