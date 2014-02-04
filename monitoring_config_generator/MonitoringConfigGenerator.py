@@ -1,12 +1,10 @@
 from datetime import datetime
-import io
 import logging
 import logging.handlers
 import optparse
 import os
 import sys
 from time import localtime, strftime
-from traceback import print_exc
 
 
 import httplib2
@@ -21,7 +19,7 @@ ETAG_COMMENT = '# ETag: '
 SUPPORTED_SECTIONS = ['defaults', 'variables', 'host', 'services']
 
 
-class MonitoringConfigGenerator:
+class MonitoringConfigGenerator(object):
 
     def __init__(self, args=None):
         if args:
@@ -66,7 +64,7 @@ Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG enviro
         if not os.path.isdir(self.target_dir):
             raise MonitoringConfigGeneratorException("%s is not a directory" % self.target_dir)
         self.logger.debug("Using %s as target dir" % self.target_dir)
-        
+
         if len(self.args) < 1:
             self.logger.fatal("Need to get at least one host to operate on")
             raise MonitoringConfigGeneratorException("Need to get at least one host to operate on")
@@ -125,19 +123,17 @@ Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG enviro
                 return True
         return False
 
-    
     def service_configuration_contains_undefined_variables(self):
         for settings_of_single_service in self.icinga_generator.services:
             for setting_key in settings_of_single_service:
                 if "${" in str(settings_of_single_service[setting_key]):
-                    return True	
+                    return True
         return False
-
 
     def configuration_contains_undefined_variables(self):
         return self.host_configuration_contains_undefined_variables() or \
-            self.service_configuration_contains_undefined_variables()  	
- 
+            self.service_configuration_contains_undefined_variables()
+
     def write_output(self):
         self.output_writer = OutputWriter(self.input_reader.output_path)
         self.output_writer.indent = CONFIG['INDENT']
@@ -145,7 +141,7 @@ Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG enviro
         self.output_writer.write_icinga_config(self.icinga_generator)
 
 
-class InputReader:
+class InputReader(object):
 
     def __init__(self, input_name, target_dir):
         self.logger = logging.getLogger("InputReader")
@@ -209,7 +205,7 @@ class InputReader:
                 self.etag = oldEtag
             else:
                 raise MonitoringConfigGeneratorException("Host %s returned with status %s.  "
-                                                         "I don't know how to handle that." % 
+                                                         "I don't know how to handle that." %
                                                              (self.hostname, status))
         except Exception, e:
             self.logger.error("Problem retrieving config for %s from %s" % (self.hostname, url), exc_info=True)
@@ -217,7 +213,7 @@ class InputReader:
             self.yaml_config = None
 
 
-class IcingaGenerator:
+class IcingaGenerator(object):
     def __init__(self, yaml_config):
         self.logger = logging.getLogger("IcingaGenerator")
         self.yaml_config = yaml_config
@@ -237,16 +233,15 @@ class IcingaGenerator:
             # check for all directives in host
             for directive in ICINGA_HOST_DIRECTIVES:
                 if not directive in self.host:
-                    raise MandatoryDirectiveMissingException("Mandatory directive %s is missing from host-section" % 
+                    raise MandatoryDirectiveMissingException("Mandatory directive %s is missing from host-section" %
                                                              directive)
 
             # check for all directives in services
             for directive in ICINGA_SERVICE_DIRECTIVES:
                 for service in self.services:
                     if not directive in service:
-                        raise MandatoryDirectiveMissingException("Mandatory directive %s is missing from service %s" % 
+                        raise MandatoryDirectiveMissingException("Mandatory directive %s is missing from service %s" %
                                                                  (directive, service))
-
 
             # check host_name equal
             all_host_names = set([service["host_name"] for service in self.services])
@@ -266,9 +261,8 @@ class IcingaGenerator:
                 used_descriptions.add(service_description)
 
             if len(multiple_descriptions) > 0:
-                raise ServiceDescriptionNotUniqueException("Service description %s used for more than one service" % 
+                raise ServiceDescriptionNotUniqueException("Service description %s used for more than one service" %
                                                            multiple_descriptions)
-
 
     def generate(self):
         self.run_pre_generation_checks()
@@ -282,12 +276,12 @@ class IcingaGenerator:
 
     def generate_service_definitions(self):
         yaml_services = self.yaml_config.get("services", {})
-        if not type(yaml_services) is type({}):
+        if not isinstance(yaml_services, dict):
             raise MonitoringConfigGeneratorException("services must be a dict")
         for yaml_service_id in sorted(yaml_services.keys()):
             self.services.append(self.generate_service_definition(yaml_services[yaml_service_id], yaml_service_id))
 
-    def generate_service_definition(self, yaml_service,yaml_service_id):
+    def generate_service_definition(self, yaml_service, yaml_service_id):
         service_definition = self.section_with_defaults(yaml_service)
         service_definition["_service_id"] = yaml_service_id
         self.apply_variables(service_definition)
@@ -330,7 +324,7 @@ class IcingaGenerator:
                 break
 
 
-class YamlToIcinga:
+class YamlToIcinga(object):
 
     def __init__(self, icinga_generator, indent, etag):
         self.icinga_lines = []
@@ -362,15 +356,16 @@ class YamlToIcinga:
 
     @staticmethod
     def value_to_icinga(value):
-        """Convert a scalar or list to Icinga value format. Lists are concatenated by , 
+        """Convert a scalar or list to Icinga value format. Lists are concatenated by ,
         and empty (None) values produce an empty string"""
-        if type(value) is type([]):
+        if isinstance(value, list):
             # explicitly set None values to empty string
             return ",".join([str(x) if (x is not None) else "" for x in value])
         else:
             return str(value)
 
-class OutputWriter:
+
+class OutputWriter(object):
 
     def __init__(self, output_file):
         self.logger = logging.getLogger("OutputWriter")
@@ -388,7 +383,7 @@ class OutputWriter:
         self.logger.debug("Created %s" % self.output_file)
 
 
-class ETagReader:
+class ETagReader(object):
 
     def __init__(self, fileName):
         self.fileName = fileName

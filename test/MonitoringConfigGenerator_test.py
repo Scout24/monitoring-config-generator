@@ -12,6 +12,7 @@ from monitoring_config_generator.MonitoringConfigGenerator import MonitoringConf
 from monitoring_config_generator.MonitoringConfigGeneratorExceptions import *
 from TestLogger import init_test_logger
 
+
 class Test(unittest.TestCase):
 
     testDir = "testdata"
@@ -19,7 +20,7 @@ class Test(unittest.TestCase):
     os.mkdir(CONFIG["TARGET_DIR"])
 
     init_test_logger()
-    
+
     def run_config_generator_on_directory(self, input_dir):
         """convenience function: if input_dir contains exactly one yaml and on .cfg file it will run the generator
            on the yaml file and compare to the .cfg file"""
@@ -45,9 +46,9 @@ class Test(unittest.TestCase):
     def assert_no_undefined_variables(self, filename):
         generated_config_file = file(filename)
         for line in generated_config_file:
-            self.assertFalse("${" in line,"found undefined variable in " + filename)
+            self.assertFalse("${" in line, "found undefined variable in " + filename)
 
-    def get_yaml_file_from_directory(self,directory): 
+    def get_yaml_file_from_directory(self, directory):
         input_directory = os.path.join(self.testDir, directory)
         all_yaml = [filename for filename in os.listdir(input_directory) if filename.endswith(".yaml")]
         self.assertEquals(1, len(all_yaml))
@@ -55,18 +56,17 @@ class Test(unittest.TestCase):
         yaml_file_with_path = os.path.abspath(os.path.join(input_directory, yaml_file))
         return yaml_file_with_path
 
-    def run_config_generator_for_invalid_file(self, input_dir, generated_configuration_filename): 
-        yaml_file = self.get_yaml_file_from_directory(input_dir) 
+    def run_config_generator_for_invalid_file(self, input_dir, generated_configuration_filename):
+        yaml_file = self.get_yaml_file_from_directory(input_dir)
         MonitoringConfigGenerator(yaml_file).generate()
-        output_path = os.path.join(CONFIG['TARGET_DIR'],generated_configuration_filename)
-        self.assertFalse(os.path.exists(output_path),"Generator generated file for undefined variables")
- 
+        output_path = os.path.join(CONFIG['TARGET_DIR'], generated_configuration_filename)
+        self.assertFalse(os.path.exists(output_path), "Generator generated file for undefined variables")
 
     def test_generated_config_with_missing__variable(self):
-        self.run_config_generator_for_invalid_file("itest_testhost08_variables","testhost08.other.domain.cfg")
-    
+        self.run_config_generator_for_invalid_file("itest_testhost08_variables", "testhost08.other.domain.cfg")
+
     def test_generated_config_with_missing_service_variable(self):
-        self.run_config_generator_for_invalid_file("itest_testhost09_variables","testhost09.other.domain.cfg")
+        self.run_config_generator_for_invalid_file("itest_testhost09_variables", "testhost09.other.domain.cfg")
 
     def test_generates_config_from_new_file(self):
         self.run_config_generator_on_directory("itest_testhost03_new_format")
@@ -76,14 +76,12 @@ class Test(unittest.TestCase):
 
     def test_generated_config_using_defaults_and_variables(self):
         self.run_config_generator_on_directory("itest_testhost05_variables")
-    
+
     def test_generated_config_with_list_with_quotes(self):
         self.run_config_generator_on_directory("itest_testhost10_quotes")
 
-    
     def test_some_edge_cases(self):
         self.run_config_generator_on_directory("itest_testhost06_defaults_before_variables")
-    
 
     def assert_that_contents_of_files_is_identical(self, actualFileName, expectedFileName):
         linesActual = open(actualFileName, 'r').readlines()
@@ -109,7 +107,7 @@ class Test(unittest.TestCase):
                 self.assertEquals(lineActual,
                                   lineExpected,
                                   "Line #%d does not match (expected='%s', actual='%s'" %
-                                      (index, lineExpected, lineActual))
+                                  (index, lineExpected, lineActual))
 
     def run_config_gen(self, yamlConfig):
         yaml_parsed = yaml.load(yamlConfig)
@@ -257,7 +255,7 @@ class Test(unittest.TestCase):
                   service_description: service1
                   check_command: commando
         '''
-        
+
         hostname = "testhost01"
         self.run_config_gen(input_yaml)
         self.assertEquals(self.service_definitions[0].get("host_name"), hostname)
@@ -279,7 +277,7 @@ class Test(unittest.TestCase):
                   service_description: service1
                   check_command: commando
         '''
-        
+
         hostname = "testhost01"
         self.run_config_gen(input_yaml)
         self.assertEquals(self.service_definitions[0].get("_service_id"), "s1")
@@ -380,7 +378,6 @@ class Test(unittest.TestCase):
         '''
         hostname = "testhost01"
         self.assertRaises(HostNamesNotEqualException, self.run_config_gen, input_yaml)
-
 
     def test_error_section_descriptions_not_unique(self):
         """if the generated output contains a service section with no host_name, an exception should be thrown"""
