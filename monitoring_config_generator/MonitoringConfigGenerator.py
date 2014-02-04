@@ -276,7 +276,7 @@ class IcingaGenerator(object):
 
     def generate_service_definitions(self):
         yaml_services = self.yaml_config.get("services", {})
-        if not type(yaml_services) is type({}):
+        if not isinstance(yaml_services, dict):
             raise MonitoringConfigGeneratorException("services must be a dict")
         for yaml_service_id in sorted(yaml_services.keys()):
             self.services.append(self.generate_service_definition(yaml_services[yaml_service_id], yaml_service_id))
@@ -358,7 +358,7 @@ class YamlToIcinga(object):
     def value_to_icinga(value):
         """Convert a scalar or list to Icinga value format. Lists are concatenated by ,
         and empty (None) values produce an empty string"""
-        if type(value) is type([]):
+        if isinstance(value, list):
             # explicitly set None values to empty string
             return ",".join([str(x) if (x is not None) else "" for x in value])
         else:
