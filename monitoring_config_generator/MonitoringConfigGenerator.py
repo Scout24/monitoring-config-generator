@@ -1,12 +1,10 @@
 from datetime import datetime
-import io
 import logging
 import logging.handlers
 import optparse
 import os
 import sys
 from time import localtime, strftime
-from traceback import print_exc
 
 
 import httplib2
