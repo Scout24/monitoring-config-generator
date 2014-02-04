@@ -111,9 +111,9 @@ class Test(unittest.TestCase):
                                   "Line #%d does not match (expected='%s', actual='%s'" %
                                       (index, lineExpected, lineActual))
 
-    def run_config_gen(self, hostname, yamlConfig):
+    def run_config_gen(self, yamlConfig):
         yaml_parsed = yaml.load(yamlConfig)
-        icinga_generator = IcingaGenerator(hostname, yaml_parsed)
+        icinga_generator = IcingaGenerator(yaml_parsed)
         icinga_generator.generate()
         self.host_definition = icinga_generator.host
         self.service_definitions = icinga_generator.services
@@ -137,7 +137,7 @@ class Test(unittest.TestCase):
                 check_interval: 6
                 retry_interval: 7
         '''
-        self.run_config_gen("testhost01", input_yaml)
+        self.run_config_gen(input_yaml)
 
     def test_generates_host_definition(self):
         input_yaml = '''
@@ -151,7 +151,7 @@ class Test(unittest.TestCase):
                 check_interval: 6
                 retry_interval: 7
         '''
-        self.run_config_gen("testhost01.sub.domain", input_yaml)
+        self.run_config_gen(input_yaml)
         self.assertEquals(self.host_definition.get("check_period"), "24x7")
         self.assertEquals(self.host_definition.get("max_check_attempts"), 5)
 
@@ -167,7 +167,7 @@ class Test(unittest.TestCase):
                 notification_period: #
         '''
         host_name = "testhost01.sub.domain"
-        self.run_config_gen(host_name, input_yaml)
+        self.run_config_gen(input_yaml)
         self.assertEquals(None, self.host_definition.get("address"))
         self.assertEquals(self.host_definition.get("host_name"), host_name)
         self.assertEquals(self.host_definition.get("check_period"), "24x7")
@@ -188,7 +188,7 @@ class Test(unittest.TestCase):
                 retry_interval: 7
 
         '''
-        self.run_config_gen("testhost01.sub.domain", input_yaml)
+        self.run_config_gen(input_yaml)
         self.assertEquals(self.host_definition.get("host_name"), "testhost01")
         self.assertEquals(self.host_definition.get("max_check_attempts"), 5)
         # these values used to be removed from the host definition in the version for the old format
@@ -214,7 +214,7 @@ class Test(unittest.TestCase):
                     check_command: check_graphite_disk_usage!_boot!90!95
         '''
         hostname = "testhost01"
-        self.run_config_gen(hostname, input_yaml)
+        self.run_config_gen(input_yaml)
         # there is no hostname but the values should still be added through the defaults
         self.assertTrue("host_name" in self.host_definition.keys())
 
@@ -235,7 +235,7 @@ class Test(unittest.TestCase):
                 retry_interval: 7
         '''
         hostname = "testhost01"
-        self.run_config_gen(hostname, input_yaml)
+        self.run_config_gen(input_yaml)
         self.assertEquals(len(self.service_definitions), 1)
         self.assertEquals(self.service_definitions[0].get("host_name"), hostname)
         self.assertEquals(self.service_definitions[0].get("check_command"), "check_graphite_disk_usage!_boot!90!95")
@@ -259,7 +259,7 @@ class Test(unittest.TestCase):
         '''
         
         hostname = "testhost01"
-        self.run_config_gen(hostname, input_yaml)
+        self.run_config_gen(input_yaml)
         self.assertEquals(self.service_definitions[0].get("host_name"), hostname)
         self.assertEquals(self.service_definitions[0].get("check_command"), "commando")
         self.assertEquals(self.service_definitions[0].get("check_period"), "24x7")
@@ -281,7 +281,7 @@ class Test(unittest.TestCase):
         '''
         
         hostname = "testhost01"
-        self.run_config_gen(hostname, input_yaml)
+        self.run_config_gen(input_yaml)
         self.assertEquals(self.service_definitions[0].get("_service_id"), "s1")
 
     def test_that_host_only_defaults_are_no_longer_supported(self):
@@ -311,7 +311,7 @@ class Test(unittest.TestCase):
         '''
 
         hostname = "testhost01"
-        self.run_config_gen(hostname, input_yaml)
+        self.run_config_gen(input_yaml)
         self.assertEquals(self.service_definitions[0].get("host_name"), "testhost01")
         self.assertEquals(self.service_definitions[0].get("check_command"), "commando")
         self.assertEquals(self.service_definitions[0].get("max_check_attempts"), 5)
@@ -333,7 +333,7 @@ class Test(unittest.TestCase):
                 - whatever
         '''
         hostname = "testhost01"
-        self.assertRaises(UnknownSectionException, self.run_config_gen, hostname, input_yaml)
+        self.assertRaises(UnknownSectionException, self.run_config_gen, input_yaml)
 
 
     def test_error_on_missing_hostname_in_service(self):
@@ -344,7 +344,7 @@ class Test(unittest.TestCase):
                    check_command: commando
         '''
         hostname = "testhost01"
-        self.assertRaises(MandatoryDirectiveMissingException, self.run_config_gen, hostname, input_yaml)
+        self.assertRaises(MandatoryDirectiveMissingException, self.run_config_gen, input_yaml)
 
     def test_error_on_missing_hostname_in_host(self):
         """if the generated output contains a service section with no host_name, an exception should be thrown"""
@@ -353,7 +353,7 @@ class Test(unittest.TestCase):
                 a: b
         '''
         hostname = "testhost01"
-        self.assertRaises(MandatoryDirectiveMissingException, self.run_config_gen, hostname, input_yaml)
+        self.assertRaises(MandatoryDirectiveMissingException, self.run_config_gen, input_yaml)
 
     def test_error_on_different_hostnames_in_sections(self):
         """if the generated output contains a service section with no host_name, an exception should be thrown"""
@@ -379,7 +379,7 @@ class Test(unittest.TestCase):
                    host_name: testhost02
         '''
         hostname = "testhost01"
-        self.assertRaises(HostNamesNotEqualException, self.run_config_gen, hostname, input_yaml)
+        self.assertRaises(HostNamesNotEqualException, self.run_config_gen, input_yaml)
 
 
     def test_error_section_descriptions_not_unique(self):
@@ -406,7 +406,7 @@ class Test(unittest.TestCase):
                    host_name: testhost01
         '''
         hostname = "testhost01"
-        self.assertRaises(ServiceDescriptionNotUniqueException, self.run_config_gen, hostname, input_yaml)
+        self.assertRaises(ServiceDescriptionNotUniqueException, self.run_config_gen, input_yaml)
 
     def test_yaml_merger(self):
         input_dir = "itest_testhost07_multifile_dir"

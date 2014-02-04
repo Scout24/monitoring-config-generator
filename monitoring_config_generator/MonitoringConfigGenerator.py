@@ -108,7 +108,7 @@ Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG enviro
         if self.yaml_config is None:
             return 1
 
-        self.icinga_generator = IcingaGenerator(self.input_reader.hostname, self.yaml_config)
+        self.icinga_generator = IcingaGenerator(self.yaml_config)
         self.icinga_generator.skip_checks = self.options.skip_checks
         self.icinga_generator.generate()
         if(not self.configuration_contains_undefined_variables()):
@@ -218,9 +218,8 @@ class InputReader:
 
 
 class IcingaGenerator:
-    def __init__(self, hostname, yaml_config):
+    def __init__(self, yaml_config):
         self.logger = logging.getLogger("IcingaGenerator")
-        self.hostname = hostname
         self.yaml_config = yaml_config
         self.skip_checks = False
         self.services = []
