@@ -64,8 +64,14 @@ class TestConfigReaders(unittest.TestCase):
 
     @patch('monitoring_config_generator.readers.merge_yaml_files')
     @patch('os.path.getmtime')
-    def test_read_config_from_file(self, merge_yaml_files_mock, getmtime_mock):
-        read_config_from_file('/path/to/file')
-        merge_yaml_files_mock.assert_called_once_with('/path/to/file')
-        getmtime_mock.assert_called_once_with('/path/to/file')
+    def test_read_config_from_file(self, getmtime_mock, merge_yaml_files_mock):
+        ANY_MERGED_YAML = 'any_yaml'
+        ANY_MTIME = 123456789.0
+        merge_yaml_files_mock.return_value = ANY_MERGED_YAML
+        getmtime_mock.return_value = ANY_MTIME
+        merged_yaml, etag, mtime = read_config_from_file(ANY_PATH)
+        merge_yaml_files_mock.assert_called_once_with(ANY_PATH)
+        getmtime_mock.assert_called_once_with(ANY_PATH)
+        self.assertEquals(ANY_MERGED_YAML, merged_yaml)
+        self.assertEquals(ANY_MTIME, mtime)
 
