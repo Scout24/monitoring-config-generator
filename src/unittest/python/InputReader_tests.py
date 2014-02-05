@@ -9,7 +9,7 @@ from TestLogger import init_test_logger
 
 os.environ['MONITORING_CONFIG_GENERATOR_CONFIG'] = "testdata/testconfig.yaml"
 from monitoring_config_generator.readers import InputReader
-from monitoring_config_generator.readers import read_config
+from monitoring_config_generator.readers import read_config, read_config_from_file
 
 
 class Test(unittest.TestCase):
@@ -47,6 +47,7 @@ class TestConfigReaders(unittest.TestCase):
     def test_read_config_calls_read_file_with_file_uri(self, mock_read_config_from_file):
         for i, uri in enumerate(['/path/to/file', 'file:///path/to/file']):
             read_config(uri)
+            mock_read_config_from_file.assert_called_with('/path/to/file')
             self.assertEquals(i + 1, mock_read_config_from_file.call_count)
 
     @patch('monitoring_config_generator.readers.read_config_from_host')
@@ -57,3 +58,11 @@ class TestConfigReaders(unittest.TestCase):
 
     def test_read_config_raises_exception_with_invalid_uri(self):
         self.assertRaises(ValueError, read_config, 'ftp://example.com')
+
+    @patch('monitoring_config_generator.readers.merge_yaml_files')
+    @patch('os.path.getmtime')
+    def test_read_config_from_file(self, merge_yaml_files_mock, getmtime_mock):
+        read_config_from_file('/path/to/file')
+        merge_yaml_files_mock.assert_called_once_with('/path/to/file')
+        getmtime_mock.assert_called_once_with('/path/to/file')
+

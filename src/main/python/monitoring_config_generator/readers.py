@@ -1,5 +1,6 @@
 import logging
 import os
+import os.path
 import urlparse
 
 
@@ -23,15 +24,18 @@ def is_host(parsed_uri):
 def read_config(uri):
     uri_parsed = urlparse.urlparse(uri)
     if is_file(uri_parsed):
-        return read_config_from_file()
+        return read_config_from_file(uri_parsed.path)
     elif is_host(uri_parsed):
         return read_config_from_host()
     else:
         raise ValueError('Given url was not acceptable %s' % uri)
 
 
-def read_config_from_file():
-    pass
+def read_config_from_file(path):
+    yaml_config = merge_yaml_files(path)
+    etag = None
+    mtime = os.path.getmtime(path)
+    return yaml_config, etag, mtime
 
 
 def read_config_from_host():
