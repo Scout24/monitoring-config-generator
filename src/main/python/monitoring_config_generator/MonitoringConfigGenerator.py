@@ -22,11 +22,7 @@ SUPPORTED_SECTIONS = ['defaults', 'variables', 'host', 'services']
 class MonitoringConfigGenerator(object):
 
     def __init__(self, args=None):
-        if args:
-            if isinstance(args, basestring):
-                args = [args]
-        else:
-            args = []
+        args = [args] if isinstance(args, basestring) else []
         self.create_logger()
 
         usage = '''
