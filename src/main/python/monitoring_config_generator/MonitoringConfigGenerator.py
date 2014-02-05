@@ -7,12 +7,9 @@ import sys
 from time import localtime, strftime
 
 
-import httplib2
-import yaml
-
 from MonitoringConfigGeneratorExceptions import *
 from settings import CONFIG, ICINGA_HOST_DIRECTIVES, ICINGA_SERVICE_DIRECTIVES
-from yaml_merger import dict_merge, merge_yaml_files
+from yaml_merger import dict_merge
 from .readers import InputReader
 
 MON_CONF_GEN_COMMENT = '# Created by MonitoringConfigGenerator'
