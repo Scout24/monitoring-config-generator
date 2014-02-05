@@ -29,6 +29,7 @@ def set_properties(project):
     project.depends_on('pyyaml')
     project.depends_on('httplib2')
     project.depends_on('mock')
+    project.depends_on('requests')
     project.set_property('distutils_classifiers', [
         "Development Status :: 4 - Beta",
         "Topic :: Utilities",

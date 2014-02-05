@@ -1,3 +1,4 @@
+import datetime
 import logging
 import os
 import os.path
@@ -5,6 +6,7 @@ import urlparse
 
 
 import httplib2
+import requests
 import yaml
 
 
@@ -26,7 +28,7 @@ def read_config(uri):
     if is_file(uri_parsed):
         return read_config_from_file(uri_parsed.path)
     elif is_host(uri_parsed):
-        return read_config_from_host()
+        return read_config_from_host(uri)
     else:
         raise ValueError('Given url was not acceptable %s' % uri)
 
@@ -38,8 +40,22 @@ def read_config_from_file(path):
     return yaml_config, etag, mtime
 
 
-def read_config_from_host():
-    pass
+def read_config_from_host(url):
+    response = requests.get(url)
+
+    def get_from_header(field):
+        return response.headers[field] if field in response.headers else None
+
+    if response.status_code == 200:
+        yaml_config = yaml.load(response.content)
+        etag = get_from_header('etag')
+        mtime = get_from_header('last-modified')
+        mtime = datetime.datetime.strptime(mtime, '%a, %d %b %Y %H:%M:%S %Z').strftime('%s')
+    else:
+        msg = "Request %s returned with status %s. I don't know how to handle that." % (url, response.status_code)
+        raise MonitoringConfigGeneratorException(msg)
+
+    return yaml_config, etag, mtime
 
 
 class InputReader(object):

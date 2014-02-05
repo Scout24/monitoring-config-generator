@@ -2,14 +2,18 @@ import os
 import unittest
 
 
-from mock import patch
+from mock import patch, Mock
 
 
 from TestLogger import init_test_logger
 
 os.environ['MONITORING_CONFIG_GENERATOR_CONFIG'] = "testdata/testconfig.yaml"
 from monitoring_config_generator.readers import InputReader
-from monitoring_config_generator.readers import read_config, read_config_from_file
+from monitoring_config_generator.readers import (read_config,
+                                                 read_config_from_file,
+                                                 read_config_from_host,
+                                                 )
+from monitoring_config_generator.MonitoringConfigGeneratorExceptions import MonitoringConfigGeneratorException
 
 
 class Test(unittest.TestCase):
@@ -75,3 +79,24 @@ class TestConfigReaders(unittest.TestCase):
         self.assertEquals(ANY_MERGED_YAML, merged_yaml)
         self.assertEquals(ANY_MTIME, mtime)
 
+    @patch('requests.get')
+    def test_read_config_from_host(self, get_mock):
+        response_mock = Mock()
+        response_mock.status_code = 200
+        response_mock.content = 'yaml:'
+        response_mock.headers = {'etag': 'deadbeefbeebaadfoodbabe',
+                                 'last-modified': 'Thu, 01 Jan 1970 01:00:00 GMT'
+                                 }
+        get_mock.return_value = response_mock
+        merged_yaml, etag, mtime = read_config_from_host(ANY_PATH)
+        self.assertEquals({'yaml': None}, merged_yaml)
+        self.assertEquals('deadbeefbeebaadfoodbabe', etag)
+        self.assertEquals('0', mtime)
+
+    @patch('requests.get')
+    def test_read_config_from_host_raises_exception(self, get_mock):
+        response_mock = Mock()
+        response_mock.status_code = 404
+        get_mock.return_value = response_mock
+        self.assertRaises(MonitoringConfigGeneratorException,
+                          read_config_from_host, ANY_PATH)
