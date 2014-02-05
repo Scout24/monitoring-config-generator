@@ -33,4 +33,5 @@ def set_properties(project):
         "Programming Language :: Python",
         ])
     project.set_property('copy_resources_target', '$dir_dist')
-    project.get_property('copy_resources_glob').extend(['setup.cfg'])
+    project.get_property('copy_resources_glob').extend(
+            ['setup.cfg', 'LICENSE.TXT', 'README.md'])
