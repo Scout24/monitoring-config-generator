@@ -5,6 +5,7 @@ use_plugin("python.core")
 use_plugin("python.unittest")
 use_plugin('python.install_dependencies')
 use_plugin('python.distutils')
+use_plugin('copy_resources')
 
 name = "monitoring-config-generator"
 default_task = "publish"
@@ -31,3 +32,5 @@ def set_properties(project):
         "Topic :: Utilities",
         "Programming Language :: Python",
         ])
+    project.set_property('copy_resources_target', '$dir_dist')
+    project.get_property('copy_resources_glob').extend(['setup.cfg'])
