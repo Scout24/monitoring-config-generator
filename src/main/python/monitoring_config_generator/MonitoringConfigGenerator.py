@@ -68,7 +68,7 @@ Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG enviro
         self.logger.debug("Args: %s" % self.args)
         source = self.args[0]
         self.logger.info("MonitoringConfigGenerator start: reading from %s, writing to %s" % (source, self.target_dir))
-        self.input_reader = InputReader(self.args[0], self.target_dir)
+        self.input_reader = InputReader(source, self.target_dir)
 
     def create_logger(self):
         self.logger = logging.getLogger()
