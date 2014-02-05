@@ -62,8 +62,9 @@ Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG enviro
         self.logger.debug("Using %s as target dir" % self.target_dir)
 
         if len(self.args) < 1:
-            self.logger.fatal("Need to get at least one host to operate on")
-            raise MonitoringConfigGeneratorException("Need to get at least one host to operate on")
+            msg = "Need to get at least one host to operate on"
+            self.logger.fatal(msg)
+            raise MonitoringConfigGeneratorException(msg)
         self.logger.debug("Args: %s" % self.args)
         source = self.args[0]
         self.logger.info("MonitoringConfigGenerator start: reading from %s, writing to %s" % (source, self.target_dir))
