@@ -35,7 +35,7 @@ class MonitoringConfigGenerator(object):
 
 Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG environment variable
 '''
-        parser = optparse.OptionParser(usage=usage, prog="monitoring_config_generator")
+        parser = optparse.OptionParser(usage=usage)
         parser.add_option("--debug",
                           dest="debug",
                           action="store_true",
