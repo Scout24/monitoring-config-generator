@@ -4,7 +4,7 @@ import unittest
 from TestLogger import init_test_logger
 
 os.environ['MONITORING_CONFIG_GENERATOR_CONFIG'] = "testdata/testconfig.yaml"
-from monitoring_config_generator.MonitoringConfigGenerator import InputReader
+from monitoring_config_generator.readers import InputReader
 
 
 class Test(unittest.TestCase):

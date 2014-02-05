@@ -2,7 +2,7 @@ import os
 import unittest
 
 os.environ['MONITORING_CONFIG_GENERATOR_CONFIG'] = "testdata/testconfig.yaml"
-from monitoring_config_generator.MonitoringConfigGenerator import ETagReader
+from monitoring_config_generator.readers import ETagReader
 
 
 class Test(unittest.TestCase):
