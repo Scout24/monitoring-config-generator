@@ -6,12 +6,9 @@ import httplib2
 import yaml
 
 
-from .settings import CONFIG
+from .settings import CONFIG, ETAG_COMMENT
 from .yaml_merger import merge_yaml_files
 from MonitoringConfigGeneratorExceptions import MonitoringConfigGeneratorException
-
-
-ETAG_COMMENT = '# ETag: '
 
 
 class InputReader(object):

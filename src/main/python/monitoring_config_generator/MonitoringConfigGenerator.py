@@ -8,12 +8,11 @@ from time import localtime, strftime
 
 
 from MonitoringConfigGeneratorExceptions import *
-from settings import CONFIG, ICINGA_HOST_DIRECTIVES, ICINGA_SERVICE_DIRECTIVES
+from settings import CONFIG, ICINGA_HOST_DIRECTIVES, ICINGA_SERVICE_DIRECTIVES, ETAG_COMMENT
 from yaml_merger import dict_merge
 from .readers import InputReader
 
 MON_CONF_GEN_COMMENT = '# Created by MonitoringConfigGenerator'
-ETAG_COMMENT = '# ETag: '
 SUPPORTED_SECTIONS = ['defaults', 'variables', 'host', 'services']
 
 
