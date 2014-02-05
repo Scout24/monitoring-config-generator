@@ -41,13 +41,16 @@ class Test(unittest.TestCase):
         self.assertEquals(None, input_reader.etag)
 
 
+ANY_PATH = '/path/to/file'
+
+
 class TestConfigReaders(unittest.TestCase):
 
     @patch('monitoring_config_generator.readers.read_config_from_file')
     def test_read_config_calls_read_file_with_file_uri(self, mock_read_config_from_file):
-        for i, uri in enumerate(['/path/to/file', 'file:///path/to/file']):
+        for i, uri in enumerate([ANY_PATH, 'file://' + ANY_PATH]):
             read_config(uri)
-            mock_read_config_from_file.assert_called_with('/path/to/file')
+            mock_read_config_from_file.assert_called_with(ANY_PATH)
             self.assertEquals(i + 1, mock_read_config_from_file.call_count)
 
     @patch('monitoring_config_generator.readers.read_config_from_host')
