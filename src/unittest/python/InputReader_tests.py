@@ -1,10 +1,15 @@
 import os
 import unittest
 
+
+from mock import patch
+
+
 from TestLogger import init_test_logger
 
 os.environ['MONITORING_CONFIG_GENERATOR_CONFIG'] = "testdata/testconfig.yaml"
 from monitoring_config_generator.readers import InputReader
+from monitoring_config_generator.readers import read_config
 
 
 class Test(unittest.TestCase):
@@ -34,3 +39,21 @@ class Test(unittest.TestCase):
 
         # output dir doesn't exist, so there should be no etag
         self.assertEquals(None, input_reader.etag)
+
+
+class TestConfigReaders(unittest.TestCase):
+
+    @patch('monitoring_config_generator.readers.read_config_from_file')
+    def test_read_config_calls_read_file_with_file_uri(self, mock_read_config_from_file):
+        for i, uri in enumerate(['/path/to/file', 'file:///path/to/file']):
+            read_config(uri)
+            self.assertEquals(i + 1, mock_read_config_from_file.call_count)
+
+    @patch('monitoring_config_generator.readers.read_config_from_host')
+    def test_read_config_calls_read_file_with_host_uri(self, mock_read_config_from_host):
+        for i, uri in enumerate(['http://example.com', 'https://example.com']):
+            read_config(uri)
+            self.assertEquals(i + 1, mock_read_config_from_host.call_count)
+
+    def test_read_config_raises_exception_with_invalid_uri(self):
+        self.assertRaises(ValueError, read_config, 'ftp://example.com')

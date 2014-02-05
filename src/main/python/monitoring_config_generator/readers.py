@@ -1,5 +1,6 @@
 import logging
 import os
+import urlparse
 
 
 import httplib2
@@ -9,6 +10,32 @@ import yaml
 from .settings import CONFIG, ETAG_COMMENT
 from .yaml_merger import merge_yaml_files
 from MonitoringConfigGeneratorExceptions import MonitoringConfigGeneratorException
+
+
+def is_file(parsed_uri):
+    return parsed_uri.scheme in ['', 'file']
+
+
+def is_host(parsed_uri):
+    return parsed_uri.scheme in ['http', 'https']
+
+
+def read_config(uri):
+    uri_parsed = urlparse.urlparse(uri)
+    if is_file(uri_parsed):
+        return read_config_from_file()
+    elif is_host(uri_parsed):
+        return read_config_from_host()
+    else:
+        raise ValueError('Given url was not acceptable %s' % uri)
+
+
+def read_config_from_file():
+    pass
+
+
+def read_config_from_host():
+    pass
 
 
 class InputReader(object):
