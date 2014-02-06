@@ -332,7 +332,6 @@ class Test(unittest.TestCase):
         hostname = "testhost01"
         self.assertRaises(UnknownSectionException, self.run_config_gen, input_yaml)
 
-
     def test_error_on_missing_hostname_in_service(self):
         """if the generated output contains a service section with no host_name, an exception should be thrown"""
         input_yaml = '''
