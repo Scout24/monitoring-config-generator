@@ -51,14 +51,16 @@ ANY_PATH = '/path/to/file'
 class TestConfigReaders(unittest.TestCase):
 
     @patch('monitoring_config_generator.readers.read_config_from_file')
-    def test_read_config_calls_read_file_with_file_uri(self, mock_read_config_from_file):
+    def test_read_config_calls_read_config_from_file_with_file_uri(
+            self, mock_read_config_from_file):
         for i, uri in enumerate([ANY_PATH, 'file://' + ANY_PATH]):
             read_config(uri)
             mock_read_config_from_file.assert_called_with(ANY_PATH)
             self.assertEquals(i + 1, mock_read_config_from_file.call_count)
 
     @patch('monitoring_config_generator.readers.read_config_from_host')
-    def test_read_config_calls_read_file_with_host_uri(self, mock_read_config_from_host):
+    def test_read_config_calls_read_config_from_host_with_host_uri(
+            self, mock_read_config_from_host):
         for i, uri in enumerate(['http://example.com', 'https://example.com']):
             read_config(uri)
             self.assertEquals(i + 1, mock_read_config_from_host.call_count)
