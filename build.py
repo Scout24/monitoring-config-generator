@@ -5,6 +5,7 @@ use_plugin("python.core")
 use_plugin("python.unittest")
 use_plugin('python.install_dependencies')
 use_plugin('python.distutils')
+use_plugin('python.coverage')
 use_plugin('copy_resources')
 
 name = "monitoring-config-generator"
@@ -27,6 +28,8 @@ url="https://github.com/ImmobilienScout24/monitoring-config-generator.git"
 def set_properties(project):
     project.depends_on('pyyaml')
     project.depends_on('httplib2')
+    project.depends_on('mock')
+    project.depends_on('requests')
     project.set_property('distutils_classifiers', [
         "Development Status :: 4 - Beta",
         "Topic :: Utilities",

@@ -38,6 +38,7 @@ ICINGA_SERVICE_DIRECTIVES = ["host_name",
                              "check_period",
                              "notification_interval",
                              "notification_period"]
+ETAG_COMMENT = '# ETag: '
 
 
 def read_config(cfile=CONFIG_FILE):
