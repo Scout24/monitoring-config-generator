@@ -25,3 +25,6 @@ class ServiceDescriptionNotUniqueException(IcingaCheckException):
 class InvalidFormatException(MonitoringConfigGeneratorException):
     pass
 
+
+class ConfigurationContainsUndefinedVariables(IcingaCheckException):
+    pass

@@ -97,8 +97,13 @@ Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG enviro
         if raw_yaml_config is None:
             return 1
 
-        self.yaml_config = YamlConfig(raw_yaml_config,
-                                      skip_checks=self.options.skip_checks)
+        try:
+            self.yaml_config = YamlConfig(raw_yaml_config,
+                                          skip_checks=self.options.skip_checks)
+        except ConfigurationContainsUndefinedVariables:
+            self.logger.error("Configuration contained undefined variables!")
+            return 1
+
         hostname = self.yaml_config.host['host_name']
         if not hostname:
             raise Exception('hostname not found')
@@ -108,30 +113,8 @@ Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG enviro
         #if not self.input_reader.config_changed:
         #    self.logger.debug("Config didn't change, keeping old version")
         #    return 0
-        if(not self.configuration_contains_undefined_variables()):
-            self.write_output()
-            return 0
-        else:
-            self.logger.error("Configuration contained undefined variables!")
-            return 1
-
-    def host_configuration_contains_undefined_variables(self):
-        host_settings = self.yaml_config.host
-        for setting_key in host_settings:
-            if "${" in str(host_settings[setting_key]):
-                return True
-        return False
-
-    def service_configuration_contains_undefined_variables(self):
-        for settings_of_single_service in self.yaml_config.services:
-            for setting_key in settings_of_single_service:
-                if "${" in str(settings_of_single_service[setting_key]):
-                    return True
-        return False
-
-    def configuration_contains_undefined_variables(self):
-        return self.host_configuration_contains_undefined_variables() or \
-            self.service_configuration_contains_undefined_variables()
+        self.write_output()
+        return 0
 
     def write_output(self):
         self.output_writer = OutputWriter(self.output_path)
@@ -250,6 +233,25 @@ class YamlConfig(object):
 
             if not variables_applied:
                 break
+
+    def host_configuration_contains_undefined_variables(self):
+        host_settings = self.host
+        for setting_key in host_settings:
+            if "${" in str(host_settings[setting_key]):
+                return True
+        return False
+
+    def service_configuration_contains_undefined_variables(self):
+        for settings_of_single_service in self.services:
+            for setting_key in settings_of_single_service:
+                if "${" in str(settings_of_single_service[setting_key]):
+                    return True
+        return False
+
+    def configuration_contains_undefined_variables(self):
+        if self.host_configuration_contains_undefined_variables() or \
+                self.service_configuration_contains_undefined_variables():
+            raise 
 
 
 class YamlToIcinga(object):
