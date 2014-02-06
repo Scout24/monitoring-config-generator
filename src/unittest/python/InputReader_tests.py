@@ -8,7 +8,7 @@ from mock import patch, Mock
 from TestLogger import init_test_logger
 
 os.environ['MONITORING_CONFIG_GENERATOR_CONFIG'] = "testdata/testconfig.yaml"
-from monitoring_config_generator.readers import InputReader
+from monitoring_config_generator.readers import InputReader, ETagReader
 from monitoring_config_generator.readers import (read_config,
                                                  read_config_from_file,
                                                  read_config_from_host,
@@ -43,6 +43,22 @@ class Test(unittest.TestCase):
 
         # output dir doesn't exist, so there should be no etag
         self.assertEquals(None, input_reader.etag)
+
+
+class ETagReaderTest(unittest.TestCase):
+
+    def test_reads_etag_from_file(self):
+        self.assertEquals("754d61019fb8a470a654c25e59b10311963f00b5e2d2784712732feed6a82066",
+                          ETagReader("testdata/etag/testhost01.some.domain.etag.cfg").etag)
+
+    def test_file_exists_but_null_etag(self):
+        self.assertEquals(None, ETagReader("testdata/etag/testhost01.some.domain.nulletag.cfg").etag)
+
+    def test_file_exists_but_no_etag(self):
+        self.assertEquals(None, ETagReader("testdata/etag/testhost01.some.domain.noetag.cfg").etag)
+
+    def test_file_does_not_exist(self):
+        self.assertEquals(None, ETagReader("idontex.st").etag)
 
 
 ANY_PATH = '/path/to/file'
