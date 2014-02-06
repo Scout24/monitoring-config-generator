@@ -12,7 +12,7 @@ import yaml
 
 from .settings import CONFIG, ETAG_COMMENT
 from .yaml_merger import merge_yaml_files
-from MonitoringConfigGeneratorExceptions import MonitoringConfigGeneratorException
+from .exceptions import MonitoringConfigGeneratorException
 
 
 def is_file(parsed_uri):
