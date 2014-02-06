@@ -119,17 +119,16 @@ Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG enviro
         return 0
 
     def write_output(self):
+        lines = YamlToIcinga(self.yaml_config, self.etag).icinga_lines
         self.output_writer = OutputWriter(self.output_path)
-        self.output_writer.indent = CONFIG['INDENT']
-        self.output_writer.etag = self.etag
-        self.output_writer.write_icinga_config(self.yaml_config)
+        self.output_writer.write_lines(lines)
 
 
 class YamlToIcinga(object):
 
-    def __init__(self, yaml_config, indent, etag):
+    def __init__(self, yaml_config, etag):
         self.icinga_lines = []
-        self.indent = indent
+        self.indent = CONFIG['INDENT']
         self.etag = etag
         self.write_header()
         self.write_section('host', yaml_config.host)
@@ -171,12 +170,8 @@ class OutputWriter(object):
     def __init__(self, output_file):
         self.logger = logging.getLogger("OutputWriter")
         self.output_file = output_file
-        default_indent = ' ' * 8
-        self.indent = default_indent
-        self.etag = None
 
-    def write_icinga_config(self, yaml_config):
-        lines = YamlToIcinga(yaml_config, self.indent, self.etag).icinga_lines
+    def write_lines(self, lines):
         with open(self.output_file, 'w') as f:
             for line in lines:
                 f.write(line + "\n")
