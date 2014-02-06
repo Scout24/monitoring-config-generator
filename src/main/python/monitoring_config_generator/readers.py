@@ -101,7 +101,7 @@ class InputReader(object):
         url = "http://" + self.hostname + ":" + CONFIG['PORT'] + CONFIG['RESOURCE']
         self.logger.debug("Retrieving config from URL: %s" % url)
 
-        oldEtag = ETagReader(self.output_path).etag
+        oldEtag = read_etag(self.output_path)
         if oldEtag is not None:
             self.logger.debug("Using etag %s" % oldEtag)
 
@@ -130,23 +130,15 @@ class InputReader(object):
             self.yaml_config = None
 
 
-class ETagReader(object):
-
-    def __init__(self, fileName):
-        self.fileName = fileName
-        self.etag = None
-        try:
-            if os.path.isfile(fileName):
-                with open(fileName, 'r') as configFile:
-                    for line in configFile.xreadlines():
-                        if line.startswith(ETAG_COMMENT):
-                            etag = line.rstrip()[len(ETAG_COMMENT):]
-                            if len(etag) > 0:
-                                self.etag = etag
-                                return
-        except:
-            # it is totally fine to not have an etag, in that case there
-            # will just be no caching and the server will have to deliver the data again
-            self.etag = None
-
-
+def read_etag(file_name):
+    try:
+        with open(file_name, 'r') as config_file:
+            for line in config_file.xreadlines():
+                if line.startswith(ETAG_COMMENT):
+                    etag = line.rstrip()[len(ETAG_COMMENT):]
+                    if len(etag) > 0:
+                        return etag
+    except IOError:
+        # it is totally fine to not have an etag, in that case there
+        # will just be no caching and the server will have to deliver the data again
+        pass

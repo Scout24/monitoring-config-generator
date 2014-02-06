@@ -11,7 +11,7 @@ from .exceptions import (MonitoringConfigGeneratorException,
                          ConfigurationContainsUndefinedVariables,
                          )
 from .settings import CONFIG, ETAG_COMMENT
-from .readers import read_config
+from .readers import read_config, read_etag
 from .yaml_config import YamlConfig
 
 
@@ -111,10 +111,10 @@ Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG enviro
             raise Exception('hostname not found')
         self.output_path = self.output_path(host_name)
         self.etag = etag
-        # TODO: compare ETag and mtime
-        #if not self.input_reader.config_changed:
-        #    self.logger.debug("Config didn't change, keeping old version")
-        #    return 0
+        old_etag = read_etag(self.output_path)
+        if self.etag and self.etag == old_etag:
+            self.logger.debug("Config didn't change, keeping old version")
+            return 0
         self.write_output()
         return 0
 
