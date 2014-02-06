@@ -21,7 +21,7 @@ MON_CONF_GEN_COMMENT = '# Created by MonitoringConfigGenerator'
 class MonitoringConfigGenerator(object):
 
     def __init__(self, args=None):
-        args = [args] if isinstance(args, basestring) else []
+        args = [args] if isinstance(args, basestring) else args
         self.create_logger()
 
         usage = '''
@@ -60,8 +60,8 @@ Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG enviro
             raise MonitoringConfigGeneratorException("%s is not a directory" % self.target_dir)
         self.logger.debug("Using %s as target dir" % self.target_dir)
 
-        if len(self.args) < 1:
-            msg = "Need to get at least one host to operate on"
+        if len(self.args) != 1:
+            msg = "Need to get at most one uri to operate on"
             self.logger.fatal(msg)
             raise MonitoringConfigGeneratorException(msg)
         self.logger.debug("Args: %s" % self.args)

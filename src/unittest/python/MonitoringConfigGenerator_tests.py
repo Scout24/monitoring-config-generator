@@ -3,6 +3,7 @@ import os
 import shutil
 
 import yaml
+from mock import patch
 
 # load test configuration
 os.environ['MONITORING_CONFIG_GENERATOR_CONFIG'] = "testdata/testconfig.yaml"
@@ -11,6 +12,39 @@ from monitoring_config_generator.MonitoringConfigGenerator import MonitoringConf
     YamlConfig, MON_CONF_GEN_COMMENT
 from monitoring_config_generator.exceptions import *
 from TestLogger import init_test_logger
+
+
+class TestMonitoringConfigGeneratorConstructor(unittest.TestCase):
+
+    def test_init(self):
+        target_uri = 'http://example.com:8935/monitoring'
+        mcg = MonitoringConfigGenerator(args=target_uri)
+        self.assertEquals(target_uri, mcg.source)
+
+    @patch('monitoring_config_generator.MonitoringConfigGenerator.MonitoringConfigGenerator.output_debug_log_to_console')
+    def test_output_debug_log_to_console_called(self,
+            mock_output_debug_log_to_console):
+        args = ['--debug', 'http://example.com:8935/monitoring']
+        mcg = MonitoringConfigGenerator(args=args)
+        mock_output_debug_log_to_console.assert_called_once_with()
+
+    @patch('os.path.isdir')
+    def test_target_dir_not_dir_raises_exception(self, mock_isdir):
+        mock_isdir.return_value = False
+        self.assertRaises(MonitoringConfigGeneratorException,
+                          MonitoringConfigGenerator,
+                          ['--targetdir', '/not/a/dir'])
+
+    def test_missing_uri_raises_exception(self):
+        self.assertRaises(MonitoringConfigGeneratorException,
+                          MonitoringConfigGenerator,
+                          ['--debug'])
+
+    def test_too_many_uris_raises_exception(self):
+        self.assertRaises(MonitoringConfigGeneratorException,
+                          MonitoringConfigGenerator,
+                          ['http://example.com:8935/monitoring',
+                           'http://example.com:8935/monitoring'])
 
 
 class Test(unittest.TestCase):
@@ -39,6 +73,7 @@ class Test(unittest.TestCase):
 
         output_path = os.path.join(CONFIG['TARGET_DIR'], config_file)
         expected_output_path = os.path.join(this_test_dir, config_file)
+
 
         self.assert_no_undefined_variables(output_path)
         self.assert_that_contents_of_files_is_identical(output_path, expected_output_path)
