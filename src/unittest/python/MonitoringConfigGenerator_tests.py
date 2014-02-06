@@ -3,7 +3,7 @@ import os
 import shutil
 
 import yaml
-from mock import patch
+from mock import patch, Mock
 
 # load test configuration
 os.environ['MONITORING_CONFIG_GENERATOR_CONFIG'] = "testdata/testconfig.yaml"
@@ -45,6 +45,27 @@ class TestMonitoringConfigGeneratorConstructor(unittest.TestCase):
                           MonitoringConfigGenerator,
                           ['http://example.com:8935/monitoring',
                            'http://example.com:8935/monitoring'])
+
+
+class TestMonitoringConfigGeneratorGenerate(unittest.TestCase):
+
+    @patch('monitoring_config_generator.MonitoringConfigGenerator.read_config')
+    def test_empty_yaml_returns_one(self, read_config_mock):
+        read_config_mock.return_value = (None, None, None)
+        target_uri = 'http://example.com:8935/monitoring'
+        mcg = MonitoringConfigGenerator(args=target_uri)
+        exit_code = mcg.generate()
+        self.assertEquals(1, exit_code)
+
+    @patch('monitoring_config_generator.MonitoringConfigGenerator.YamlConfig')
+    @patch('monitoring_config_generator.MonitoringConfigGenerator.read_config')
+    def test_unexpanded_variables_return_one(self, read_config_mock, YamlConfigMock):
+        read_config_mock.return_value = (True, True, True)
+        YamlConfigMock.side_effect = ConfigurationContainsUndefinedVariables
+        target_uri = 'http://example.com:8935/monitoring'
+        mcg = MonitoringConfigGenerator(args=target_uri)
+        exit_code = mcg.generate()
+        self.assertEquals(1, exit_code)
 
 
 class Test(unittest.TestCase):
