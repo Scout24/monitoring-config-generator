@@ -104,10 +104,10 @@ Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG enviro
             self.logger.error("Configuration contained undefined variables!")
             return 1
 
-        hostname = self.yaml_config.host['host_name']
-        if not hostname:
+        host_name = self.yaml_config.host_name
+        if not host_name:
             raise Exception('hostname not found')
-        self.output_path = self.output_path(hostname)
+        self.output_path = self.output_path(host_name)
         self.etag = etag
         # TODO: compare ETag and mtime
         #if not self.input_reader.config_changed:
@@ -130,6 +130,10 @@ class YamlConfig(object):
         self.skip_checks = skip_checks
         self.services = []
         self.generate()
+
+    @property
+    def host_name(self):
+        return self.host['host_name']
 
     def run_pre_generation_checks(self):
         if not self.skip_checks:
