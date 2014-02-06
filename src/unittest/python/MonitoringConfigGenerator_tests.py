@@ -9,7 +9,7 @@ os.environ['MONITORING_CONFIG_GENERATOR_CONFIG'] = "testdata/testconfig.yaml"
 from monitoring_config_generator.settings import CONFIG
 from monitoring_config_generator.MonitoringConfigGenerator import MonitoringConfigGenerator, \
     IcingaGenerator, MON_CONF_GEN_COMMENT
-from monitoring_config_generator.MonitoringConfigGeneratorExceptions import *
+from monitoring_config_generator.exceptions import *
 from TestLogger import init_test_logger
 
 

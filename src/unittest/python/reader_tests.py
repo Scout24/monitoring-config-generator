@@ -13,7 +13,7 @@ from monitoring_config_generator.readers import (read_config,
                                                  read_config_from_file,
                                                  read_config_from_host,
                                                  )
-from monitoring_config_generator.MonitoringConfigGeneratorExceptions import MonitoringConfigGeneratorException
+from monitoring_config_generator.exceptions import MonitoringConfigGeneratorException
 
 
 class Test(unittest.TestCase):
