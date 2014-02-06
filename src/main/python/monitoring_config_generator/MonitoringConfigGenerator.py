@@ -180,7 +180,6 @@ class OutputWriter(object):
         with open(self.output_file, 'w') as f:
             for line in lines:
                 f.write(line + "\n")
-            f.close()
         self.logger.debug("Created %s" % self.output_file)
 
 
