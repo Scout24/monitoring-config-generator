@@ -1,37 +1,27 @@
 class MonitoringConfigGeneratorException(Exception):
-    def __init__(self, message=""):
-        self.message = message
-
-    def __str__(self):
-        return self.message
+    pass
 
 
 class IcingaCheckException(MonitoringConfigGeneratorException):
-    def __init__(self, message=""):
-        self.message = message
+    pass
 
 
 class UnknownSectionException(IcingaCheckException):
-    def __init__(self, message=""):
-        self.message = message
+    pass
 
 
 class MandatoryDirectiveMissingException(IcingaCheckException):
-    def __init__(self, message=""):
-        self.message = message
+    pass
 
 
 class HostNamesNotEqualException(IcingaCheckException):
-    def __init__(self, message=""):
-        self.message = message
+    pass
 
 
 class ServiceDescriptionNotUniqueException(IcingaCheckException):
-    def __init__(self, message=""):
-        self.message = message
+    pass
 
 
 class InvalidFormatException(MonitoringConfigGeneratorException):
-    def __init__(self, message=""):
-        self.message = message
+    pass
 
