@@ -26,7 +26,7 @@ class Test(unittest.TestCase):
         self.assertEquals(None, input_reader.etag)
 
     def test_read_file(self):
-        host_name = "testhost03.other.domain"
+        host_name = "testhost03"
         yaml_filename = host_name + ".yaml"
         cfg_filename = host_name + ".cfg"
         input_dir = "testdata/itest_testhost03_new_format"

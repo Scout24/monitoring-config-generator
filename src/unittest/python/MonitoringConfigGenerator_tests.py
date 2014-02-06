@@ -8,7 +8,7 @@ import yaml
 os.environ['MONITORING_CONFIG_GENERATOR_CONFIG'] = "testdata/testconfig.yaml"
 from monitoring_config_generator.settings import CONFIG
 from monitoring_config_generator.MonitoringConfigGenerator import MonitoringConfigGenerator, \
-    IcingaGenerator, MON_CONF_GEN_COMMENT
+    YamlConfig, MON_CONF_GEN_COMMENT
 from monitoring_config_generator.exceptions import *
 from TestLogger import init_test_logger
 
@@ -109,12 +109,11 @@ class Test(unittest.TestCase):
                                   "Line #%d does not match (expected='%s', actual='%s'" %
                                   (index, lineExpected, lineActual))
 
-    def run_config_gen(self, yamlConfig):
-        yaml_parsed = yaml.load(yamlConfig)
-        icinga_generator = IcingaGenerator(yaml_parsed)
-        icinga_generator.generate()
-        self.host_definition = icinga_generator.host
-        self.service_definitions = icinga_generator.services
+    def run_config_gen(self, yaml_config_str):
+        yaml_parsed = yaml.load(yaml_config_str)
+        yaml_config = YamlConfig(yaml_parsed)
+        self.host_definition = yaml_config.host
+        self.service_definitions = yaml_config.services
 
     def test_generates_icinga_config(self):
         input_yaml = '''
@@ -407,7 +406,7 @@ class Test(unittest.TestCase):
 
     def test_yaml_merger(self):
         input_dir = "itest_testhost07_multifile_dir"
-        self.run_full_config_gen(input_dir, "testhost07.other.domain", "testhost07.other.domain.cfg")
+        self.run_full_config_gen(input_dir, "testhost07", "testhost07.cfg")
 
 
 if __name__ == "__main__":

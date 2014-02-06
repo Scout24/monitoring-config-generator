@@ -10,7 +10,7 @@ from time import localtime, strftime
 from .exceptions import *
 from settings import CONFIG, ICINGA_HOST_DIRECTIVES, ICINGA_SERVICE_DIRECTIVES, ETAG_COMMENT
 from yaml_merger import dict_merge
-from .readers import InputReader
+from .readers import read_config
 
 MON_CONF_GEN_COMMENT = '# Created by MonitoringConfigGenerator'
 SUPPORTED_SECTIONS = ['defaults', 'variables', 'host', 'services']
@@ -63,9 +63,8 @@ Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG enviro
             self.logger.fatal(msg)
             raise MonitoringConfigGeneratorException(msg)
         self.logger.debug("Args: %s" % self.args)
-        source = self.args[0]
-        self.logger.info("MonitoringConfigGenerator start: reading from %s, writing to %s" % (source, self.target_dir))
-        self.input_reader = InputReader(source, self.target_dir)
+        self.source = self.args[0]
+        self.logger.info("MonitoringConfigGenerator start: reading from %s, writing to %s" % (self.source, self.target_dir))
 
     def create_logger(self):
         self.logger = logging.getLogger()
@@ -89,20 +88,26 @@ Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG enviro
         self.logger.setLevel(logging.DEBUG)
         self.logger.debug("Debug logging enabled via command line")
 
+    def output_path(self, hostname):
+        return os.path.join(self.target_dir, hostname + '.cfg')
+
     def generate(self):
-        self.input_reader.read_input()
+        raw_yaml_config, etag, mtime = read_config(self.source)
 
-        if not self.input_reader.config_changed:
-            self.logger.debug("Config didn't change, keeping old version")
-            return 0
-
-        self.yaml_config = self.input_reader.yaml_config
-        if self.yaml_config is None:
+        if raw_yaml_config is None:
             return 1
 
-        self.icinga_generator = IcingaGenerator(self.yaml_config)
-        self.icinga_generator.skip_checks = self.options.skip_checks
-        self.icinga_generator.generate()
+        self.yaml_config = YamlConfig(raw_yaml_config,
+                                      skip_checks=self.options.skip_checks)
+        hostname = self.yaml_config.host['host_name']
+        if not hostname:
+            raise Exception('hostname not found')
+        self.output_path = self.output_path(hostname)
+        self.etag = etag
+        # TODO: compare ETag and mtime
+        #if not self.input_reader.config_changed:
+        #    self.logger.debug("Config didn't change, keeping old version")
+        #    return 0
         if(not self.configuration_contains_undefined_variables()):
             self.write_output()
             return 0
@@ -111,14 +116,14 @@ Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG enviro
             return 1
 
     def host_configuration_contains_undefined_variables(self):
-        host_settings = self.icinga_generator.host
+        host_settings = self.yaml_config.host
         for setting_key in host_settings:
             if "${" in str(host_settings[setting_key]):
                 return True
         return False
 
     def service_configuration_contains_undefined_variables(self):
-        for settings_of_single_service in self.icinga_generator.services:
+        for settings_of_single_service in self.yaml_config.services:
             for setting_key in settings_of_single_service:
                 if "${" in str(settings_of_single_service[setting_key]):
                     return True
@@ -129,18 +134,19 @@ Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG enviro
             self.service_configuration_contains_undefined_variables()
 
     def write_output(self):
-        self.output_writer = OutputWriter(self.input_reader.output_path)
+        self.output_writer = OutputWriter(self.output_path)
         self.output_writer.indent = CONFIG['INDENT']
-        self.output_writer.etag = self.input_reader.etag
-        self.output_writer.write_icinga_config(self.icinga_generator)
+        self.output_writer.etag = self.etag
+        self.output_writer.write_icinga_config(self.yaml_config)
 
 
-class IcingaGenerator(object):
-    def __init__(self, yaml_config):
+class YamlConfig(object):
+    def __init__(self, yaml_config, skip_checks=False):
         self.logger = logging.getLogger("IcingaGenerator")
         self.yaml_config = yaml_config
-        self.skip_checks = False
+        self.skip_checks = skip_checks
         self.services = []
+        self.generate()
 
     def run_pre_generation_checks(self):
         if not self.skip_checks:
@@ -248,13 +254,13 @@ class IcingaGenerator(object):
 
 class YamlToIcinga(object):
 
-    def __init__(self, icinga_generator, indent, etag):
+    def __init__(self, yaml_config, indent, etag):
         self.icinga_lines = []
         self.indent = indent
         self.etag = etag
         self.write_header()
-        self.write_section('host', icinga_generator.host)
-        for service in icinga_generator.services:
+        self.write_section('host', yaml_config.host)
+        for service in yaml_config.services:
             self.write_section('service', service)
 
     def write_line(self, line):
@@ -296,8 +302,8 @@ class OutputWriter(object):
         self.indent = default_indent
         self.etag = None
 
-    def write_icinga_config(self, icinga_generator):
-        lines = YamlToIcinga(icinga_generator, self.indent, self.etag).icinga_lines
+    def write_icinga_config(self, yaml_config):
+        lines = YamlToIcinga(yaml_config, self.indent, self.etag).icinga_lines
         with open(self.output_file, 'w') as f:
             for line in lines:
                 f.write(line + "\n")
