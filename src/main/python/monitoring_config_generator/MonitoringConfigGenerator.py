@@ -111,6 +111,7 @@ Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG enviro
         old_header = Header.parse(output_path)
         if not header.is_newer_than(old_header):
             self.logger.debug("Config didn't change, keeping old version")
+            return 0
         self.write_output(output_path, yaml_config, header)
         return 0
 
