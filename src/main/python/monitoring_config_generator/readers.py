@@ -8,7 +8,7 @@ import requests
 import yaml
 
 
-from .settings import CONFIG, ETAG_COMMENT
+from .settings import ETAG_COMMENT
 from .yaml_merger import merge_yaml_files
 from .exceptions import MonitoringConfigGeneratorException
 
