@@ -3,7 +3,7 @@ host:
     check_command: check-host-alive
     check_period: 24x7
     contact_groups: testdienst
-    host_name: testhost03.other.domain
+    host_name: testhost03
     max_check_attempts: 5
     notification_interval: 30
     notification_options: d,u,r
@@ -19,7 +19,7 @@ services:
     check_command: check_httpd!/mietcheck/internal/status!80!"OK - Service is running"
     check_period: 24x7
     contact_groups: testdienst
-    host_name: testhost03.other.domain
+    host_name: testhost03
     is_volatile: 0
     max_check_attempts: 5
     normal_check_interval: 3
@@ -36,7 +36,7 @@ services:
     check_command: check_graphite!90!95
     check_period: 24x7
     contact_groups: testdienst
-    host_name: testhost03.other.domain
+    host_name: testhost03
     is_volatile: 0
     max_check_attempts: 5
     normal_check_interval: 3

@@ -3,14 +3,78 @@ import os
 import shutil
 
 import yaml
+from mock import patch, Mock
 
 # load test configuration
 os.environ['MONITORING_CONFIG_GENERATOR_CONFIG'] = "testdata/testconfig.yaml"
 from monitoring_config_generator.settings import CONFIG
-from monitoring_config_generator.MonitoringConfigGenerator import MonitoringConfigGenerator, \
-    IcingaGenerator, MON_CONF_GEN_COMMENT
+from monitoring_config_generator.readers import Header
+from monitoring_config_generator.MonitoringConfigGenerator import MonitoringConfigGenerator, YamlConfig
 from monitoring_config_generator.exceptions import *
 from TestLogger import init_test_logger
+
+
+class TestMonitoringConfigGeneratorConstructor(unittest.TestCase):
+
+    def test_init(self):
+        target_uri = 'http://example.com:8935/monitoring'
+        mcg = MonitoringConfigGenerator(args=target_uri)
+        self.assertEquals(target_uri, mcg.source)
+
+    @patch('monitoring_config_generator.MonitoringConfigGenerator.MonitoringConfigGenerator.output_debug_log_to_console')
+    def test_output_debug_log_to_console_called(self,
+            mock_output_debug_log_to_console):
+        args = ['--debug', 'http://example.com:8935/monitoring']
+        mcg = MonitoringConfigGenerator(args=args)
+        mock_output_debug_log_to_console.assert_called_once_with()
+
+    @patch('os.path.isdir')
+    def test_target_dir_not_dir_raises_exception(self, mock_isdir):
+        mock_isdir.return_value = False
+        self.assertRaises(MonitoringConfigGeneratorException,
+                          MonitoringConfigGenerator,
+                          ['--targetdir', '/not/a/dir'])
+
+    def test_missing_uri_raises_exception(self):
+        self.assertRaises(MonitoringConfigGeneratorException,
+                          MonitoringConfigGenerator,
+                          ['--debug'])
+
+    def test_too_many_uris_raises_exception(self):
+        self.assertRaises(MonitoringConfigGeneratorException,
+                          MonitoringConfigGenerator,
+                          ['http://example.com:8935/monitoring',
+                           'http://example.com:8935/monitoring'])
+
+
+class TestMonitoringConfigGeneratorGenerate(unittest.TestCase):
+
+    @patch('monitoring_config_generator.MonitoringConfigGenerator.read_config')
+    def test_empty_yaml_returns_one(self, read_config_mock):
+        read_config_mock.return_value = (None, None)
+        target_uri = 'http://example.com:8935/monitoring'
+        mcg = MonitoringConfigGenerator(args=target_uri)
+        exit_code = mcg.generate()
+        self.assertEquals(1, exit_code)
+
+    @patch('monitoring_config_generator.MonitoringConfigGenerator.YamlConfig')
+    @patch('monitoring_config_generator.MonitoringConfigGenerator.read_config')
+    def test_unexpanded_variables_return_one(self, read_config_mock, YamlConfigMock):
+        read_config_mock.return_value = (True, True)
+        YamlConfigMock.side_effect = ConfigurationContainsUndefinedVariables
+        target_uri = 'http://example.com:8935/monitoring'
+        mcg = MonitoringConfigGenerator(args=target_uri)
+        exit_code = mcg.generate()
+        self.assertEquals(1, exit_code)
+
+    @patch('monitoring_config_generator.MonitoringConfigGenerator.YamlConfig')
+    @patch('monitoring_config_generator.MonitoringConfigGenerator.read_config')
+    def test_missing_hostname_raises_exception(self, read_config_mock, YamlConfigMock):
+        read_config_mock.return_value = (True, True)
+        YamlConfigMock.return_value = Mock(host_name=None)
+        target_uri = 'http://example.com:8935/monitoring'
+        mcg = MonitoringConfigGenerator(args=target_uri)
+        self.assertRaises(NoSuchHostname, mcg.generate)
 
 
 class Test(unittest.TestCase):
@@ -39,6 +103,7 @@ class Test(unittest.TestCase):
 
         output_path = os.path.join(CONFIG['TARGET_DIR'], config_file)
         expected_output_path = os.path.join(this_test_dir, config_file)
+
 
         self.assert_no_undefined_variables(output_path)
         self.assert_that_contents_of_files_is_identical(output_path, expected_output_path)
@@ -99,9 +164,11 @@ class Test(unittest.TestCase):
 
             # special handling for the the header line
             # because "Created by ... " contains a date, so it will not match exactly
-            if lineExpected.startswith(MON_CONF_GEN_COMMENT):
+            if lineExpected.startswith(Header.MON_CONF_GEN_COMMENT):
                 # so if it is the line containing the date we will only compare the start of the line
-                self.assertTrue(lineActual.startswith(MON_CONF_GEN_COMMENT))
+                self.assertTrue(lineActual.startswith(Header.MON_CONF_GEN_COMMENT))
+            elif lineExpected.startswith(Header.MTIME_COMMMENT):
+                self.assertTrue(lineActual.startswith(Header.MTIME_COMMMENT))
             else:
                 # other lines will be compared completely of course
                 self.assertEquals(lineActual,
@@ -109,12 +176,11 @@ class Test(unittest.TestCase):
                                   "Line #%d does not match (expected='%s', actual='%s'" %
                                   (index, lineExpected, lineActual))
 
-    def run_config_gen(self, yamlConfig):
-        yaml_parsed = yaml.load(yamlConfig)
-        icinga_generator = IcingaGenerator(yaml_parsed)
-        icinga_generator.generate()
-        self.host_definition = icinga_generator.host
-        self.service_definitions = icinga_generator.services
+    def run_config_gen(self, yaml_config_str):
+        yaml_parsed = yaml.load(yaml_config_str)
+        yaml_config = YamlConfig(yaml_parsed)
+        self.host_definition = yaml_config.host
+        self.service_definitions = yaml_config.services
 
     def test_generates_icinga_config(self):
         input_yaml = '''
@@ -333,7 +399,6 @@ class Test(unittest.TestCase):
         hostname = "testhost01"
         self.assertRaises(UnknownSectionException, self.run_config_gen, input_yaml)
 
-
     def test_error_on_missing_hostname_in_service(self):
         """if the generated output contains a service section with no host_name, an exception should be thrown"""
         input_yaml = '''
@@ -407,7 +472,7 @@ class Test(unittest.TestCase):
 
     def test_yaml_merger(self):
         input_dir = "itest_testhost07_multifile_dir"
-        self.run_full_config_gen(input_dir, "testhost07.other.domain", "testhost07.other.domain.cfg")
+        self.run_full_config_gen(input_dir, "testhost07", "testhost07.cfg")
 
 
 if __name__ == "__main__":
