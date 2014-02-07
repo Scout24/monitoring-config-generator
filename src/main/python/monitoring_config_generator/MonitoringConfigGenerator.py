@@ -4,18 +4,15 @@ import logging.handlers
 import optparse
 import os
 import sys
-from time import localtime, strftime
 
 
 from .exceptions import (MonitoringConfigGeneratorException,
                          ConfigurationContainsUndefinedVariables,
+                         NoSuchHostname,
                          )
-from .settings import CONFIG, ETAG_COMMENT
-from .readers import read_config, read_etag
+from .settings import CONFIG
+from .readers import read_config, Header
 from .yaml_config import YamlConfig
-
-
-MON_CONF_GEN_COMMENT = '# Created by MonitoringConfigGenerator'
 
 
 class MonitoringConfigGenerator(object):
@@ -94,55 +91,48 @@ Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG enviro
         return os.path.join(self.target_dir, hostname + '.cfg')
 
     def generate(self):
-        raw_yaml_config, etag, mtime = read_config(self.source)
+        raw_yaml_config, header = read_config(self.source)
 
         if raw_yaml_config is None:
             return 1
 
         try:
-            self.yaml_config = YamlConfig(raw_yaml_config,
-                                          skip_checks=self.options.skip_checks)
+            yaml_config = YamlConfig(raw_yaml_config,
+                                     skip_checks=self.options.skip_checks)
         except ConfigurationContainsUndefinedVariables:
             self.logger.error("Configuration contained undefined variables!")
             return 1
 
-        host_name = self.yaml_config.host_name
+        host_name = yaml_config.host_name
         if not host_name:
-            raise Exception('hostname not found')
-        self.output_path = self.output_path(host_name)
-        self.etag = etag
-        old_etag = read_etag(self.output_path)
-        if self.etag and self.etag == old_etag:
+            raise NoSuchHostname('hostname not found')
+        output_path = self.output_path(host_name)
+        header = header
+        old_header = Header.parse(output_path)
+        if not header.is_newer_than(old_header):
             self.logger.debug("Config didn't change, keeping old version")
-            return 0
-        self.write_output()
+        self.write_output(output_path, yaml_config, header)
         return 0
 
-    def write_output(self):
-        lines = YamlToIcinga(self.yaml_config, self.etag).icinga_lines
-        self.output_writer = OutputWriter(self.output_path)
-        self.output_writer.write_lines(lines)
+    @staticmethod
+    def write_output(output_path, yaml_config, header):
+        lines = YamlToIcinga(yaml_config, header).icinga_lines
+        output_writer = OutputWriter(output_path)
+        output_writer.write_lines(lines)
 
 
 class YamlToIcinga(object):
 
-    def __init__(self, yaml_config, etag):
+    def __init__(self, yaml_config, header):
         self.icinga_lines = []
         self.indent = CONFIG['INDENT']
-        self.etag = etag
-        self.write_header()
+        self.icinga_lines.extend(header.serialize())
         self.write_section('host', yaml_config.host)
         for service in yaml_config.services:
             self.write_section('service', service)
 
     def write_line(self, line):
         self.icinga_lines.append(line)
-
-    def write_header(self):
-        timeString = strftime("%Y-%m-%d %H:%M:%S", localtime())
-        self.write_line("%s on %s" % (MON_CONF_GEN_COMMENT, timeString))
-        if self.etag is not None:
-            self.write_line("%s%s" % (ETAG_COMMENT, self.etag))
 
     def write_section(self, section_name, section_data):
         self.write_line("")

@@ -2,13 +2,14 @@ import datetime
 import os
 import os.path
 import urlparse
+from time import localtime, strftime
+
 
 
 import requests
 import yaml
 
 
-from .settings import ETAG_COMMENT
 from .yaml_merger import merge_yaml_files
 from .exceptions import MonitoringConfigGeneratorException
 
@@ -35,7 +36,7 @@ def read_config_from_file(path):
     yaml_config = merge_yaml_files(path)
     etag = None
     mtime = os.path.getmtime(path)
-    return yaml_config, etag, mtime
+    return yaml_config, Header(etag=etag, mtime=mtime)
 
 
 def read_config_from_host(url):
@@ -53,18 +54,60 @@ def read_config_from_host(url):
         msg = "Request %s returned with status %s. I don't know how to handle that." % (url, response.status_code)
         raise MonitoringConfigGeneratorException(msg)
 
-    return yaml_config, etag, mtime
+    return yaml_config, Header(etag=etag, mtime=mtime)
 
 
-def read_etag(file_name):
-    try:
-        with open(file_name, 'r') as config_file:
-            for line in config_file.xreadlines():
-                if line.startswith(ETAG_COMMENT):
-                    etag = line.rstrip()[len(ETAG_COMMENT):]
-                    if len(etag) > 0:
-                        return etag
-    except IOError:
-        # it is totally fine to not have an etag, in that case there
-        # will just be no caching and the server will have to deliver the data again
-        pass
+class Header(object):
+
+    MON_CONF_GEN_COMMENT = '# Created by MonitoringConfigGenerator'
+    ETAG_COMMENT = '# ETag: '
+    MTIME_COMMMENT = '# MTime: '
+
+    def __init__(self, etag=None, mtime=0):
+        self.etag = etag
+        self.mtime = int(mtime)
+
+    def __nonzero__(self):
+        return self.etag is None and self.mtime is 0
+
+    def __eq__(self, other):
+        return self.etag == other.etag and self.mtime == other.mtime
+
+    def is_newer_than(self, other):
+        if self.etag != other.etag:
+            return cmp(self.mtime, other.mtime) >= 0
+        else:
+            return False
+
+    def serialize(self):
+        lines = []
+        timeString = strftime("%Y-%m-%d %H:%M:%S", localtime())
+        lines.append("%s on %s" % (Header.MON_CONF_GEN_COMMENT, timeString))
+        if self.etag:
+            lines.append("%s%s" % (Header.ETAG_COMMENT, self.etag))
+        if self.mtime:
+            lines.append("%s%d" % (Header.MTIME_COMMMENT, self.mtime))
+        return lines
+
+    @staticmethod
+    def parse(file_name):
+        etag, mtime = None, 0
+
+        def extract(comment, current_value):
+            value = None
+            if line.startswith(comment):
+                value = line.rstrip()[len(comment):]
+            return value or current_value
+        try:
+            with open(file_name, 'r') as config_file:
+                for line in config_file.xreadlines():
+                    etag = extract(Header.ETAG_COMMENT, etag)
+                    mtime = extract(Header.MTIME_COMMMENT, mtime)
+                    if etag and mtime:
+                        break
+        except IOError:
+            # it is totally fine to not have an etag, in that case there
+            # will just be no caching and the server will have to deliver the data again
+            pass
+        finally:
+            return Header(etag=etag, mtime=mtime)

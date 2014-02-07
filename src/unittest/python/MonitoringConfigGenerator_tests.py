@@ -8,8 +8,8 @@ from mock import patch, Mock
 # load test configuration
 os.environ['MONITORING_CONFIG_GENERATOR_CONFIG'] = "testdata/testconfig.yaml"
 from monitoring_config_generator.settings import CONFIG
-from monitoring_config_generator.MonitoringConfigGenerator import MonitoringConfigGenerator, \
-    YamlConfig, MON_CONF_GEN_COMMENT
+from monitoring_config_generator.readers import Header
+from monitoring_config_generator.MonitoringConfigGenerator import MonitoringConfigGenerator, YamlConfig
 from monitoring_config_generator.exceptions import *
 from TestLogger import init_test_logger
 
@@ -51,7 +51,7 @@ class TestMonitoringConfigGeneratorGenerate(unittest.TestCase):
 
     @patch('monitoring_config_generator.MonitoringConfigGenerator.read_config')
     def test_empty_yaml_returns_one(self, read_config_mock):
-        read_config_mock.return_value = (None, None, None)
+        read_config_mock.return_value = (None, None)
         target_uri = 'http://example.com:8935/monitoring'
         mcg = MonitoringConfigGenerator(args=target_uri)
         exit_code = mcg.generate()
@@ -60,12 +60,21 @@ class TestMonitoringConfigGeneratorGenerate(unittest.TestCase):
     @patch('monitoring_config_generator.MonitoringConfigGenerator.YamlConfig')
     @patch('monitoring_config_generator.MonitoringConfigGenerator.read_config')
     def test_unexpanded_variables_return_one(self, read_config_mock, YamlConfigMock):
-        read_config_mock.return_value = (True, True, True)
+        read_config_mock.return_value = (True, True)
         YamlConfigMock.side_effect = ConfigurationContainsUndefinedVariables
         target_uri = 'http://example.com:8935/monitoring'
         mcg = MonitoringConfigGenerator(args=target_uri)
         exit_code = mcg.generate()
         self.assertEquals(1, exit_code)
+
+    @patch('monitoring_config_generator.MonitoringConfigGenerator.YamlConfig')
+    @patch('monitoring_config_generator.MonitoringConfigGenerator.read_config')
+    def test_missing_hostname_raises_exception(self, read_config_mock, YamlConfigMock):
+        read_config_mock.return_value = (True, True)
+        YamlConfigMock.return_value = Mock(host_name=None)
+        target_uri = 'http://example.com:8935/monitoring'
+        mcg = MonitoringConfigGenerator(args=target_uri)
+        self.assertRaises(NoSuchHostname, mcg.generate)
 
 
 class Test(unittest.TestCase):
@@ -155,9 +164,11 @@ class Test(unittest.TestCase):
 
             # special handling for the the header line
             # because "Created by ... " contains a date, so it will not match exactly
-            if lineExpected.startswith(MON_CONF_GEN_COMMENT):
+            if lineExpected.startswith(Header.MON_CONF_GEN_COMMENT):
                 # so if it is the line containing the date we will only compare the start of the line
-                self.assertTrue(lineActual.startswith(MON_CONF_GEN_COMMENT))
+                self.assertTrue(lineActual.startswith(Header.MON_CONF_GEN_COMMENT))
+            elif lineExpected.startswith(Header.MTIME_COMMMENT):
+                self.assertTrue(lineActual.startswith(Header.MTIME_COMMMENT))
             else:
                 # other lines will be compared completely of course
                 self.assertEquals(lineActual,

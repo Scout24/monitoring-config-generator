@@ -9,25 +9,63 @@ os.environ['MONITORING_CONFIG_GENERATOR_CONFIG'] = "testdata/testconfig.yaml"
 from monitoring_config_generator.readers import (read_config,
                                                  read_config_from_file,
                                                  read_config_from_host,
-                                                 read_etag,
+                                                 Header,
                                                  )
 from monitoring_config_generator.exceptions import MonitoringConfigGeneratorException
+
+
+class TestHeader(unittest.TestCase):
+
+    def test_constructor(self):
+        header = Header(etag='a', mtime=1)
+        self.assertEquals(header.etag, 'a')
+        self.assertEquals(header.mtime, 1)
+
+    def test_compare_myheader_is_newer_than_yours(self):
+        my_header = Header(etag='a', mtime=1)
+        your_header = Header(etag='b', mtime=0)
+        self.assertTrue(my_header.is_newer_than(your_header))
+
+    def test_compare_myheader_is_older_than_yours(self):
+        my_header = Header(etag='a', mtime=0)
+        your_header = Header(etag='b', mtime=1)
+        self.assertFalse(my_header.is_newer_than(your_header))
+
+    def test_compare_myheader_is_equal_to_yours(self):
+        my_header = Header(etag='a')
+        your_header = Header(etag='a')
+        self.assertFalse(my_header.is_newer_than(your_header))
+
+    def test_compare_myheader_is_equal_to_yours_with_None(self):
+        my_header = Header()
+        your_header = Header()
+        self.assertFalse(my_header.is_newer_than(your_header))
+
+    def test_compare_myheader_is_not_equal_to_yours_with_same_mtime(self):
+        my_header = Header('a')
+        your_header = Header('b')
+        self.assertTrue(my_header.is_newer_than(your_header))
 
 
 class TestReadEtag(unittest.TestCase):
 
     def test_reads_etag_from_file(self):
-        self.assertEquals("754d61019fb8a470a654c25e59b10311963f00b5e2d2784712732feed6a82066",
-                          read_etag("testdata/etag/testhost01.some.domain.etag.cfg"))
+        etag = "754d61019fb8a470a654c25e59b10311963f00b5e2d2784712732feed6a82066"
+        expected = Header(etag=etag)
+        received = Header.parse("testdata/etag/testhost01.some.domain.etag.cfg")
+        self.assertEquals(expected.etag, received.etag)
 
     def test_file_exists_but_null_etag(self):
-        self.assertEquals(None, read_etag("testdata/etag/testhost01.some.domain.nulletag.cfg"))
+        received = Header.parse("testdata/etag/testhost01.some.domain.nulletag.cfg")
+        self.assertEquals(Header(), received)
 
     def test_file_exists_but_no_etag(self):
-        self.assertEquals(None, read_etag("testdata/etag/testhost01.some.domain.noetag.cfg"))
+        received = Header.parse("testdata/etag/testhost01.some.domain.noetag.cfg")
+        self.assertEquals(Header(), received)
 
     def test_file_does_not_exist(self):
-        self.assertEquals(None, read_etag("idontex.st"))
+        received = Header.parse("idontex.st")
+        self.assertEquals(Header(), received)
 
 
 ANY_PATH = '/path/to/file'
@@ -60,11 +98,11 @@ class TestConfigReaders(unittest.TestCase):
         ANY_MTIME = 123456789.0
         merge_yaml_files_mock.return_value = ANY_MERGED_YAML
         getmtime_mock.return_value = ANY_MTIME
-        merged_yaml, etag, mtime = read_config_from_file(ANY_PATH)
+        merged_yaml, header = read_config_from_file(ANY_PATH)
         merge_yaml_files_mock.assert_called_once_with(ANY_PATH)
         getmtime_mock.assert_called_once_with(ANY_PATH)
         self.assertEquals(ANY_MERGED_YAML, merged_yaml)
-        self.assertEquals(ANY_MTIME, mtime)
+        self.assertEquals(ANY_MTIME, header.mtime)
 
     @patch('requests.get')
     def test_read_config_from_host(self, get_mock):
@@ -75,10 +113,10 @@ class TestConfigReaders(unittest.TestCase):
                                  'last-modified': 'Thu, 01 Jan 1970 01:00:00 GMT'
                                  }
         get_mock.return_value = response_mock
-        merged_yaml, etag, mtime = read_config_from_host(ANY_PATH)
+        merged_yaml, header = read_config_from_host(ANY_PATH)
         self.assertEquals({'yaml': None}, merged_yaml)
-        self.assertEquals('deadbeefbeebaadfoodbabe', etag)
-        self.assertEquals('0', mtime)
+        self.assertEquals('deadbeefbeebaadfoodbabe', header.etag)
+        self.assertEquals(0, header.mtime)
 
     @patch('requests.get')
     def test_read_config_from_host_raises_exception(self, get_mock):

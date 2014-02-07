@@ -28,3 +28,7 @@ class InvalidFormatException(MonitoringConfigGeneratorException):
 
 class ConfigurationContainsUndefinedVariables(IcingaCheckException):
     pass
+
+
+class NoSuchHostname(Exception):
+    pass
