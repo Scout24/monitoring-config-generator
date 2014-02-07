@@ -74,8 +74,8 @@ class Header(object):
         return self.etag == other.etag and self.mtime == other.mtime
 
     def is_newer_than(self, other):
-        if self.etag != other.etag:
-            return cmp(self.mtime, other.mtime) >= 0
+        if self.etag != other.etag or self.etag is None:
+            return cmp(self.mtime, other.mtime) > 0
         else:
             return False
 

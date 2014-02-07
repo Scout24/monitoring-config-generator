@@ -21,30 +21,52 @@ class TestHeader(unittest.TestCase):
         self.assertEquals(header.etag, 'a')
         self.assertEquals(header.mtime, 1)
 
+    def test_compare_myheader_is_newer_than_yours_with_equal_mtime(self):
+        # In case of different etags but same mtime, clock-skew (???)
+        # don't touch anything!
+        my_header = Header(etag='a', mtime=0)
+        your_header = Header(etag='b', mtime=0)
+        self.assertFalse(my_header.is_newer_than(your_header))
+
     def test_compare_myheader_is_newer_than_yours(self):
         my_header = Header(etag='a', mtime=1)
         your_header = Header(etag='b', mtime=0)
         self.assertTrue(my_header.is_newer_than(your_header))
 
-    def test_compare_myheader_is_older_than_yours(self):
+    def test_compare_myheader_is_not_newer_than_yours_with_older_mtime(self):
         my_header = Header(etag='a', mtime=0)
         your_header = Header(etag='b', mtime=1)
         self.assertFalse(my_header.is_newer_than(your_header))
 
-    def test_compare_myheader_is_equal_to_yours(self):
-        my_header = Header(etag='a')
-        your_header = Header(etag='a')
+    def test_compare_myheader_is_not_newer_than_yours_with_equal_etag(self):
+        my_header = Header(etag='a', mtime=0)
+        your_header = Header(etag='a', mtime=0)
         self.assertFalse(my_header.is_newer_than(your_header))
 
-    def test_compare_myheader_is_equal_to_yours_with_None(self):
-        my_header = Header()
-        your_header = Header()
+    def test_compare_myheader_is_not_newer_than_yours_with_equal_etag_and_newer_mtime(self):
+        my_header = Header(etag='a', mtime=1)
+        your_header = Header(etag='a', mtime=0)
         self.assertFalse(my_header.is_newer_than(your_header))
 
-    def test_compare_myheader_is_not_equal_to_yours_with_same_mtime(self):
-        my_header = Header('a')
-        your_header = Header('b')
+    def test_compare_myheader_is_not_newer_than_yours_with_equal_etag_and_older_mtime(self):
+        my_header = Header(etag='a', mtime=0)
+        your_header = Header(etag='a', mtime=1)
+        self.assertFalse(my_header.is_newer_than(your_header))
+
+    def test_compare_myheader_is_not_newer_than_yours_with_None(self):
+        my_header = Header(etag=None, mtime=0)
+        your_header = Header(etag=None, mtime=0)
+        self.assertFalse(my_header.is_newer_than(your_header))
+
+    def test_compare_myheader_is_newer_than_yours_with_differing_mtime(self):
+        my_header = Header(etag=None, mtime=1)
+        your_header = Header(etag=None, mtime=0)
         self.assertTrue(my_header.is_newer_than(your_header))
+
+    def test_compare_myheader_is_not_newer_than_yours_with_differing_mtime(self):
+        my_header = Header(etag=None, mtime=0)
+        your_header = Header(etag=None, mtime=1)
+        self.assertFalse(my_header.is_newer_than(your_header))
 
 
 class TestReadEtag(unittest.TestCase):
