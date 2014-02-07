@@ -23,7 +23,7 @@ class MonitoringConfigGenerator(object):
 
         usage = '''
 %prog reads the yaml config of a host via file or http and generates nagios/icinga config from that
-%prog [hostname|filename]
+%prog uri
 
 Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG environment variable
 '''
