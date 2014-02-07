@@ -180,7 +180,7 @@ def main_method():
         log.exception(e)
         if log.level is not logging.DEBUG:
             # debug log already prints error, don't print it again
-            print >>sys.stderr, 'ERROR: %s' % e.message
+            print >>sys.stderr, 'ERROR: %s' % str(e)
         exit_code = 1
     finally:
         stop_time = datetime.now()
