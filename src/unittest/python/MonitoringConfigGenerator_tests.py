@@ -79,9 +79,11 @@ class TestMonitoringConfigGeneratorGenerate(unittest.TestCase):
 
 class Test(unittest.TestCase):
 
-    testDir = "testdata"
-    shutil.rmtree(CONFIG["TARGET_DIR"], True)
-    os.mkdir(CONFIG["TARGET_DIR"])
+    @classmethod
+    def setUpClass(cls):
+        cls.testDir = "testdata"
+        shutil.rmtree(CONFIG["TARGET_DIR"], True)
+        os.mkdir(CONFIG["TARGET_DIR"])
 
     init_test_logger()
 
