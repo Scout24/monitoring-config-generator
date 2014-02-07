@@ -1,11 +1,9 @@
 import datetime
-import logging
 import os
 import os.path
 import urlparse
 
 
-import httplib2
 import requests
 import yaml
 
