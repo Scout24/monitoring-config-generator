@@ -1,0 +1,10 @@
+defaults:
+    host_name: servicetest
+    notification_period: 24x7
+    check_period: 24x7
+    contact_groups: testdienst
+    notification_interval: 1
+    notification_options: u,c,r
+    max_check_attempts: 5
+    check_interval: 3
+    retry_interval: 5

@@ -149,6 +149,27 @@ class Test(unittest.TestCase):
     def test_some_edge_cases(self):
         self.run_config_generator_on_directory("itest_testhost06_defaults_before_variables")
 
+    @patch('os.path.getmtime')
+    def mtime_helper(self, side_effect, correct, getmtime_mock):
+        getmtime_mock.side_effect = side_effect
+        input_directory = os.path.join(self.testDir, 'itest_testservice')
+        yaml1 = os.path.join(input_directory, 'testhost1.yaml')
+        MonitoringConfigGenerator(yaml1).generate()
+        yaml2 = os.path.join(input_directory, 'testhost2.yaml')
+        MonitoringConfigGenerator(yaml2).generate()
+        received = os.path.join(CONFIG['TARGET_DIR'], 'servicetest.cfg')
+        expected = os.path.join(input_directory, 'config_from_testhost%d.cfg' %
+                correct)
+        self.assert_that_contents_of_files_is_identical(expected, received)
+
+    def test_service_respects_mtime_with_older_file(self):
+        # make the first file who's mtime we read appear older
+        self.mtime_helper([1, 0], 1)
+
+    def test_service_respects_mtime_with_newer_file(self):
+        # now reverse file who's mtime we read appear older
+        self.mtime_helper([0, 1], 2)
+
     def assert_that_contents_of_files_is_identical(self, actualFileName, expectedFileName):
         linesActual = open(actualFileName, 'r').readlines()
         linesExpected = open(expectedFileName, 'r').readlines()
