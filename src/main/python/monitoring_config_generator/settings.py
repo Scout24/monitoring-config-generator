@@ -23,7 +23,6 @@ if 'MONITORING_CONFIG_GENERATOR_CONFIG' in os.environ and len(os.environ['MONITO
 # directives in Icinga host- and service-definitions are mandatory, MonitoringConfigGenerator will check that
 # the generated config contains all directives
 ICINGA_HOST_DIRECTIVES = ["host_name",
-                          # "alias",
                           "max_check_attempts",
                           "check_period",
                           "notification_interval",
@@ -33,8 +32,6 @@ ICINGA_SERVICE_DIRECTIVES = ["host_name",
                              "service_description",
                              "check_command",
                              "max_check_attempts",
-#                             "check_interval",
-#                             "retry_interval",
                              "check_period",
                              "notification_interval",
                              "notification_period"]
