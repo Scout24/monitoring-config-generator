@@ -4,8 +4,9 @@ defaults:
     check_period: 24x7
     contact_groups: testdienst
     notification_interval: 0
-    notification_options: u,c,r
     max_check_attempts: 5
     check_interval: 3
     retry_interval: 5
 
+host:
+    notification_options: u,c,r

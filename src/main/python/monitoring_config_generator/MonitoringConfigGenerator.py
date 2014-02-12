@@ -90,6 +90,19 @@ Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG enviro
     def output_path(self, hostname):
         return os.path.join(self.target_dir, hostname + '.cfg')
 
+    def write_monitoring_config(self, header, yaml_config):
+        host_name = yaml_config.host_name
+        if not host_name:
+            raise NoSuchHostname('hostname not found')
+        output_path = self.output_path(host_name)
+        header = header
+        old_header = Header.parse(output_path)
+        if not header.is_newer_than(old_header):
+            self.logger.debug("Config didn't change, keeping old version")
+        else:
+            self.logger.debug("Config changed")
+            self.write_output(output_path, yaml_config, header)
+
     def generate(self):
         raw_yaml_config, header = read_config(self.source)
 
@@ -103,17 +116,8 @@ Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG enviro
             self.logger.error("Configuration contained undefined variables!")
             return 1
 
-        host_name = yaml_config.host_name
-        if not host_name:
-            raise NoSuchHostname('hostname not found')
-        output_path = self.output_path(host_name)
-        header = header
-        old_header = Header.parse(output_path)
-        if not header.is_newer_than(old_header):
-            self.logger.debug("Config didn't change, keeping old version")
-        else:
-            self.logger.debug("Config changed")
-            self.write_output(output_path, yaml_config, header)
+        if yaml_config.host:
+            self.write_monitoring_config(header, yaml_config)
         return 0
 
     @staticmethod

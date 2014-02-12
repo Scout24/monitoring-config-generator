@@ -21,6 +21,7 @@ class YamlConfig(object):
         self.logger = logging.getLogger("IcingaGenerator")
         self.yaml_config = yaml_config
         self.skip_checks = skip_checks
+        self.host = None
         self.services = []
         self.generate()
 
@@ -72,23 +73,30 @@ class YamlConfig(object):
                 raise ServiceDescriptionNotUniqueException("Service description %s used for more than one service" %
                                                            multiple_descriptions)
 
-    def generate(self):
-        self.run_pre_generation_checks()
-        self.generate_host_definition()
-        self.generate_service_definitions()
+    def _generate_monitoring_configuration(self, host_definition, service_definition):
+        self.generate_host_definition(host_definition)
+        self.generate_service_definitions(service_definition)
         self.run_post_generation_checks()
         self.configuration_contains_undefined_variables()
 
-    def generate_host_definition(self):
-        self.host = self.section_with_defaults(self.yaml_config.get('host', {}))
+    def generate(self):
+        self.run_pre_generation_checks()
+
+        host_definition = self.yaml_config.get('host', {})
+        service_definition = self.yaml_config.get("services", {})
+
+        if host_definition or service_definition:
+            self._generate_monitoring_configuration(host_definition, service_definition)
+
+    def generate_host_definition(self, host_definition):
+        self.host = self.section_with_defaults(host_definition)
         self.apply_variables(self.host)
 
-    def generate_service_definitions(self):
-        yaml_services = self.yaml_config.get("services", {})
-        if not isinstance(yaml_services, dict):
+    def generate_service_definitions(self, service_definition):
+        if not isinstance(service_definition, dict):
             raise MonitoringConfigGeneratorException("services must be a dict")
-        for yaml_service_id in sorted(yaml_services.keys()):
-            self.services.append(self.generate_service_definition(yaml_services[yaml_service_id], yaml_service_id))
+        for yaml_service_id in sorted(service_definition.keys()):
+            self.services.append(self.generate_service_definition(service_definition[yaml_service_id], yaml_service_id))
 
     def generate_service_definition(self, yaml_service, yaml_service_id):
         service_definition = self.section_with_defaults(yaml_service)

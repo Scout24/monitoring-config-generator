@@ -259,6 +259,14 @@ class Test(unittest.TestCase):
         self.assertEquals(self.host_definition.get("check_period"), "24x7")
         self.assertEquals(self.host_definition.get("max_check_attempts"), 5)
 
+    def test_that_host_defintion_is_not_generated_if_only_defaults_are_given(self):
+        input_yaml = '''
+            defaults:
+                host_name: any_host_name
+        '''
+        self.run_config_gen(input_yaml)
+        self.assertEquals(self.host_definition, None)
+
     def test_that_service_only_defaults_are_not_used_for_generation_of_host_definition(self):
         input_yaml = '''
             defaults:
@@ -272,7 +280,8 @@ class Test(unittest.TestCase):
                 notification_period: 5
                 check_interval: 6
                 retry_interval: 7
-
+            host:
+                check_interval: 6
         '''
         self.run_config_gen(input_yaml)
         self.assertEquals(self.host_definition.get("host_name"), "testhost01")
@@ -283,7 +292,7 @@ class Test(unittest.TestCase):
         self.assertEquals(self.host_definition.get("service_description"), "desc of service")
         self.assertEquals(self.host_definition.get("is_volatile"), 1)
 
-    def test_that_for_yaml_config_without_host_section_a_minimal_host_definition_is_generated(self):
+    def test_that_for_yaml_config_without_host_section_a_minimal_host_definition_is_generated_when_service_defintion_is_given(self):
         input_yaml = '''
             defaults:
                     host_name: testhost01
@@ -422,6 +431,8 @@ class Test(unittest.TestCase):
                 notification_options: c,r
                 notification_period: 24x7
                 retry_check_interval: 1
+            host:
+                notification_options: u,d
         """
 
         self.assertRaises(ConfigurationContainsUndefinedVariables, self.run_config_gen, input_yaml)
