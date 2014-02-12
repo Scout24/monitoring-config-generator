@@ -5,7 +5,6 @@ import urlparse
 from time import localtime, strftime
 
 
-
 import requests
 import yaml
 
