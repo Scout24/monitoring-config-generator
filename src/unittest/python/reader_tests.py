@@ -28,6 +28,8 @@ class TestHeader(unittest.TestCase):
         your_header = Header(etag='b', mtime=0)
         self.assertFalse(my_header.is_newer_than(your_header))
 
+
+
     def test_compare_myheader_is_newer_than_yours(self):
         my_header = Header(etag='a', mtime=1)
         your_header = Header(etag='b', mtime=0)
