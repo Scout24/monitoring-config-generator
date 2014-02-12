@@ -77,6 +77,7 @@ class YamlConfig(object):
         self.generate_host_definition()
         self.generate_service_definitions()
         self.run_post_generation_checks()
+        self.configuration_contains_undefined_variables()
 
     def generate_host_definition(self):
         self.host = self.section_with_defaults(self.yaml_config.get('host', {}))
