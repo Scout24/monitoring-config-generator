@@ -408,6 +408,24 @@ class Test(unittest.TestCase):
         self.assertEquals(self.service_definitions[0].get("2d_coords"), "x,y")
         self.assertEquals(self.service_definitions[0].get("3d_coords"), "x,y,z")
 
+    def test_error_on_undefined_variables(self):
+        """if the input-YAML contains undefined variables, an exception should be thrown"""
+        input_yaml = """
+            defaults:
+                _graphite_time_range: from=-5min
+                check_interval: ${CHECK_INTERVAL}
+                check_period: 24x7
+                contact_groups: sk4
+                host_name: ${HOST_NAME}
+                max_check_attempts: 5
+                notification_interval: 0
+                notification_options: c,r
+                notification_period: 24x7
+                retry_check_interval: 1
+        """
+
+        self.assertRaises(ConfigurationContainsUndefinedVariables, self.run_config_gen, input_yaml)
+
     def test_error_on_unsupported_section(self):
         """if the input-YAML contains a non-supported section, an exception should be thrown"""
         input_yaml = '''
