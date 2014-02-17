@@ -1,22 +1,20 @@
 import logging
 
-
-from .exceptions import (MonitoringConfigGeneratorException,
-                         ConfigurationContainsUndefinedVariables,
-                         UnknownSectionException,
-                         MandatoryDirectiveMissingException,
-                         HostNamesNotEqualException,
-                         ServiceDescriptionNotUniqueException,
-                         )
-from .settings import ICINGA_HOST_DIRECTIVES, ICINGA_SERVICE_DIRECTIVES
-from .yaml_merger import dict_merge
+from monitoring_config_generator.exceptions import (UnknownSectionException,
+                                                    MandatoryDirectiveMissingException,
+                                                    HostNamesNotEqualException,
+                                                    ServiceDescriptionNotUniqueException,
+                                                    MonitoringConfigGeneratorException,
+                                                    ConfigurationContainsUndefinedVariables)
+from monitoring_config_generator.settings import (ICINGA_HOST_DIRECTIVES,
+                                                  ICINGA_SERVICE_DIRECTIVES)
+from monitoring_config_generator.yaml_tools.merger import dict_merge
 
 
 SUPPORTED_SECTIONS = ['defaults', 'variables', 'host', 'services']
 
 
 class YamlConfig(object):
-
     def __init__(self, yaml_config, skip_checks=False):
         self.logger = logging.getLogger("IcingaGenerator")
         self.yaml_config = yaml_config
@@ -85,7 +83,7 @@ class YamlConfig(object):
         host_definition = self.yaml_config.get('host', {})
         service_definition = self.yaml_config.get("services", {})
 
-        if host_definition or service_definition:
+        if service_definition:
             self._generate_monitoring_configuration(host_definition, service_definition)
 
     def generate_host_definition(self, host_definition):

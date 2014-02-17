@@ -5,14 +5,13 @@ import optparse
 import os
 import sys
 
-
 from .exceptions import (MonitoringConfigGeneratorException,
                          ConfigurationContainsUndefinedVariables,
                          NoSuchHostname,
                          )
+from monitoring_config_generator.yaml_tools.readers import Header, read_config
+from monitoring_config_generator.yaml_tools.config import YamlConfig
 from .settings import CONFIG
-from .readers import read_config, Header
-from .yaml_config import YamlConfig
 
 
 class MonitoringConfigGenerator(object):

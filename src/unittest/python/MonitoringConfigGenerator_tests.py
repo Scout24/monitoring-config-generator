@@ -2,28 +2,27 @@ import unittest
 import os
 import shutil
 
-import yaml
 from mock import patch, Mock
 
-# load test configuration
+
 os.environ['MONITORING_CONFIG_GENERATOR_CONFIG'] = "testdata/testconfig.yaml"
 from monitoring_config_generator.settings import CONFIG
-from monitoring_config_generator.readers import Header
-from monitoring_config_generator.MonitoringConfigGenerator import MonitoringConfigGenerator, YamlConfig
+from monitoring_config_generator.yaml_tools.readers import Header
+from monitoring_config_generator.MonitoringConfigGenerator import MonitoringConfigGenerator
 from monitoring_config_generator.exceptions import *
-from TestLogger import init_test_logger
+from test_logger import init_test_logger
 
 
 class TestMonitoringConfigGeneratorConstructor(unittest.TestCase):
-
     def test_init(self):
         target_uri = 'http://example.com:8935/monitoring'
         mcg = MonitoringConfigGenerator(args=target_uri)
         self.assertEquals(target_uri, mcg.source)
 
-    @patch('monitoring_config_generator.MonitoringConfigGenerator.MonitoringConfigGenerator.output_debug_log_to_console')
+    @patch(
+        'monitoring_config_generator.MonitoringConfigGenerator.MonitoringConfigGenerator.output_debug_log_to_console')
     def test_output_debug_log_to_console_called(self,
-            mock_output_debug_log_to_console):
+                                                mock_output_debug_log_to_console):
         args = ['--debug', 'http://example.com:8935/monitoring']
         mcg = MonitoringConfigGenerator(args=args)
         mock_output_debug_log_to_console.assert_called_once_with()
@@ -48,7 +47,6 @@ class TestMonitoringConfigGeneratorConstructor(unittest.TestCase):
 
 
 class TestMonitoringConfigGeneratorGenerate(unittest.TestCase):
-
     @patch('monitoring_config_generator.MonitoringConfigGenerator.read_config')
     def test_empty_yaml_returns_one(self, read_config_mock):
         read_config_mock.return_value = (None, None)
@@ -78,7 +76,6 @@ class TestMonitoringConfigGeneratorGenerate(unittest.TestCase):
 
 
 class Test(unittest.TestCase):
-
     def setUp(self):
         self.testDir = "testdata"
         shutil.rmtree(CONFIG["TARGET_DIR"], True)
@@ -104,7 +101,6 @@ class Test(unittest.TestCase):
 
         output_path = os.path.join(CONFIG['TARGET_DIR'], config_file)
         expected_output_path = os.path.join(this_test_dir, config_file)
-
 
         self.assert_no_undefined_variables(output_path)
         self.assert_that_contents_of_files_is_identical(output_path, expected_output_path)
@@ -170,19 +166,19 @@ class Test(unittest.TestCase):
         # now reverse file who's mtime we read appear older
         self.mtime_helper([0, 1], 2)
 
-    def assert_that_contents_of_files_is_identical(self, actualFileName, expectedFileName):
-        linesActual = open(actualFileName, 'r').readlines()
-        linesExpected = open(expectedFileName, 'r').readlines()
-        lenActual = len(linesActual)
-        lenExpected = len(linesExpected)
+    def assert_that_contents_of_files_is_identical(self, actual_file_name, expected_file_name):
+        lines_actual = open(actual_file_name, 'r').readlines()
+        lines_expected = open(expected_file_name, 'r').readlines()
+        len_actual = len(lines_actual)
+        len_expected = len(lines_expected)
 
-        self.assertEquals(lenActual,
-                          lenExpected,
-                          "number of lines not equal (expected=%s, actual=%s)" % (lenExpected, lenActual))
+        self.assertEquals(len_actual,
+                          len_expected,
+                          "number of lines not equal (expected=%s, actual=%s)" % (len_expected, len_actual))
 
-        for index in range(lenExpected):
-            lineActual = linesActual[index]
-            lineExpected = linesExpected[index]
+        for index in range(len_expected):
+            lineActual = lines_actual[index]
+            lineExpected = lines_expected[index]
 
             # special handling for the the header line
             # because "Created by ... " contains a date, so it will not match exactly
@@ -198,328 +194,6 @@ class Test(unittest.TestCase):
                                   "Line #%d does not match (expected='%s', actual='%s'" %
                                   (index, lineExpected, lineActual))
 
-    def run_config_gen(self, yaml_config_str):
-        yaml_parsed = yaml.load(yaml_config_str)
-        yaml_config = YamlConfig(yaml_parsed)
-        self.host_definition = yaml_config.host
-        self.service_definitions = yaml_config.services
-
-    def test_generates_icinga_config(self):
-        input_yaml = '''
-            host:
-                address: testhost01.some.domain
-                host_name: testhost01
-
-            services:
-                s1:
-                   check_command: check_graphite_disk_usage!_boot!90!95
-                   host_name: testhost01
-                   service_description: service 1
-            defaults:
-                check_period: 2
-                max_check_attempts: 5
-                notification_interval: 3
-                notification_period: 4
-                check_interval: 6
-                retry_interval: 7
-        '''
-        self.run_config_gen(input_yaml)
-
-    def test_generates_host_definition(self):
-        input_yaml = '''
-            host:
-                check_period:   24x7
-                max_check_attempts:    5
-                host_name: testhost01.sub.domain
-                max_check_attempts: 5
-                notification_interval: 3
-                notification_period: 4
-                check_interval: 6
-                retry_interval: 7
-        '''
-        self.run_config_gen(input_yaml)
-        self.assertEquals(self.host_definition.get("check_period"), "24x7")
-        self.assertEquals(self.host_definition.get("max_check_attempts"), 5)
-
-    def test_default_values_are_no_longer_generated(self):
-        """address and host_name used to be generated in the old format, but are no longer"""
-        input_yaml = '''
-            defaults:
-                host_name: testhost01.sub.domain
-            host:
-                check_period:   24x7
-                max_check_attempts:    5
-                notification_interval: #
-                notification_period: #
-        '''
-        host_name = "testhost01.sub.domain"
-        self.run_config_gen(input_yaml)
-        self.assertEquals(None, self.host_definition.get("address"))
-        self.assertEquals(self.host_definition.get("host_name"), host_name)
-        self.assertEquals(self.host_definition.get("check_period"), "24x7")
-        self.assertEquals(self.host_definition.get("max_check_attempts"), 5)
-
-    def test_that_host_defintion_is_not_generated_if_only_defaults_are_given(self):
-        input_yaml = '''
-            defaults:
-                host_name: any_host_name
-        '''
-        self.run_config_gen(input_yaml)
-        self.assertEquals(self.host_definition, None)
-
-    def test_that_service_only_defaults_are_not_used_for_generation_of_host_definition(self):
-        input_yaml = '''
-            defaults:
-                host_name: testhost01
-                hostgroup_name:    group name
-                service_description: desc of service
-                is_volatile:    1
-                check_period: 2
-                max_check_attempts:    5
-                notification_interval: 4
-                notification_period: 5
-                check_interval: 6
-                retry_interval: 7
-            host:
-                check_interval: 6
-        '''
-        self.run_config_gen(input_yaml)
-        self.assertEquals(self.host_definition.get("host_name"), "testhost01")
-        self.assertEquals(self.host_definition.get("max_check_attempts"), 5)
-        # these values used to be removed from the host definition in the version for the old format
-        # but the new version no longer exhibits this behavior
-        self.assertEquals(self.host_definition.get("hostgroup_name"), "group name")
-        self.assertEquals(self.host_definition.get("service_description"), "desc of service")
-        self.assertEquals(self.host_definition.get("is_volatile"), 1)
-
-    def test_that_for_yaml_config_without_host_section_a_minimal_host_definition_is_generated_when_service_defintion_is_given(self):
-        input_yaml = '''
-            defaults:
-                    host_name: testhost01
-                    check_period: 2
-                    max_check_attempts: 3
-                    notification_interval: 4
-                    notification_period: 5
-                    check_interval: 6
-                    retry_interval: 7
-
-            services:
-                s1:
-                    service_description: 234
-                    check_command: check_graphite_disk_usage!_boot!90!95
-        '''
-        hostname = "testhost01"
-        self.run_config_gen(input_yaml)
-        # there is no hostname but the values should still be added through the defaults
-        self.assertTrue("host_name" in self.host_definition.keys())
-
-    def test_generates_check_definition(self):
-        input_yaml = '''
-            services:
-                s1:
-                    check_command: check_graphite_disk_usage!_boot!90!95
-                    service_description: service 1
-            defaults:
-                check_command: check_graphite_disk_usage!_data!90!95
-                check_period: workhours
-                host_name: testhost01
-                max_check_attempts: 3
-                notification_interval: 4
-                notification_period: 5
-                check_interval: 6
-                retry_interval: 7
-        '''
-        hostname = "testhost01"
-        self.run_config_gen(input_yaml)
-        self.assertEquals(len(self.service_definitions), 1)
-        self.assertEquals(self.service_definitions[0].get("host_name"), hostname)
-        self.assertEquals(self.service_definitions[0].get("check_command"), "check_graphite_disk_usage!_boot!90!95")
-        self.assertEquals(self.service_definitions[0].get("check_period"), "workhours")
-
-    def test_that_defaults_are_used_for_generation_of_service_definition(self):
-        input_yaml = '''
-            defaults:
-                check_period:   24x7
-                max_check_attempts:    5
-                host_name: testhost01
-                notification_interval: 4
-                notification_period: 5
-                check_interval: 6
-                retry_interval: 7
-
-            services:
-                s1:
-                  service_description: service1
-                  check_command: commando
-        '''
-
-        hostname = "testhost01"
-        self.run_config_gen(input_yaml)
-        self.assertEquals(self.service_definitions[0].get("host_name"), hostname)
-        self.assertEquals(self.service_definitions[0].get("check_command"), "commando")
-        self.assertEquals(self.service_definitions[0].get("check_period"), "24x7")
-        self.assertEquals(self.service_definitions[0].get("max_check_attempts"), 5)
-
-    def test_that_service_id_is_set(self):
-        input_yaml = '''
-            defaults:
-                check_period:   24x7
-                host_name:    foobar
-                max_check_attempts: 1
-                notification_interval: 1
-                notification_period: no_idea
-
-            services:
-                s1:
-                  service_description: service1
-                  check_command: commando
-        '''
-
-        hostname = "testhost01"
-        self.run_config_gen(input_yaml)
-        self.assertEquals(self.service_definitions[0].get("_service_id"), "s1")
-
-    def test_that_host_only_defaults_are_no_longer_supported(self):
-        """the old version automatically removed some directives that only applied to hosts from services
-        this behavior is no longer supported
-        """
-        input_yaml = '''
-            defaults:
-                alias:    hostnamealias
-                parents:    asdf
-                vrml_image:    file
-                statusmap_image:    file
-                2d_coords:    x,y
-                3d_coords:    x,y,z
-                max_check_attempts:    5
-                host_name: testhost01
-                check_period: 2
-                notification_interval: 4
-                notification_period: 5
-                check_interval: 6
-                retry_interval: 7
-
-            services:
-                s1:
-                  service_description: service 1
-                  check_command: commando
-        '''
-
-        hostname = "testhost01"
-        self.run_config_gen(input_yaml)
-        self.assertEquals(self.service_definitions[0].get("host_name"), "testhost01")
-        self.assertEquals(self.service_definitions[0].get("check_command"), "commando")
-        self.assertEquals(self.service_definitions[0].get("max_check_attempts"), 5)
-        self.assertEquals(self.service_definitions[0].get("alias"), "hostnamealias")
-        self.assertEquals(self.service_definitions[0].get("parents"), "asdf")
-        self.assertEquals(self.service_definitions[0].get("vrml_image"), "file")
-        self.assertEquals(self.service_definitions[0].get("statusmap_image"), "file")
-        self.assertEquals(self.service_definitions[0].get("2d_coords"), "x,y")
-        self.assertEquals(self.service_definitions[0].get("3d_coords"), "x,y,z")
-
-    def test_error_on_undefined_variables(self):
-        """if the input-YAML contains undefined variables, an exception should be thrown"""
-        input_yaml = """
-            defaults:
-                _graphite_time_range: from=-5min
-                check_interval: ${CHECK_INTERVAL}
-                check_period: 24x7
-                contact_groups: sk4
-                host_name: ${HOST_NAME}
-                max_check_attempts: 5
-                notification_interval: 0
-                notification_options: c,r
-                notification_period: 24x7
-                retry_check_interval: 1
-            host:
-                notification_options: u,d
-        """
-
-        self.assertRaises(ConfigurationContainsUndefinedVariables, self.run_config_gen, input_yaml)
-
-    def test_error_on_unsupported_section(self):
-        """if the input-YAML contains a non-supported section, an exception should be thrown"""
-        input_yaml = '''
-            defaults:
-                whatever: whatever
-            services:
-                - check_command: commando
-            unsupported:
-                - whatever
-        '''
-        hostname = "testhost01"
-        self.assertRaises(UnknownSectionException, self.run_config_gen, input_yaml)
-
-    def test_error_on_missing_hostname_in_service(self):
-        """if the generated output contains a service section with no host_name, an exception should be thrown"""
-        input_yaml = '''
-            services:
-                s1:
-                   check_command: commando
-        '''
-        hostname = "testhost01"
-        self.assertRaises(MandatoryDirectiveMissingException, self.run_config_gen, input_yaml)
-
-    def test_error_on_missing_hostname_in_host(self):
-        """if the generated output contains a service section with no host_name, an exception should be thrown"""
-        input_yaml = '''
-            host:
-                a: b
-        '''
-        hostname = "testhost01"
-        self.assertRaises(MandatoryDirectiveMissingException, self.run_config_gen, input_yaml)
-
-    def test_error_on_different_hostnames_in_sections(self):
-        """if the generated output contains a service section with no host_name, an exception should be thrown"""
-        input_yaml = '''
-            defaults:
-                max_check_attempts:    5
-                check_period: 2
-                notification_interval: 4
-                notification_period: 5
-                check_interval: 6
-                retry_interval: 7
-            host:
-                host_name: testhost01
-
-            services:
-                s1:
-                   service_description: service 1
-                   check_command: cmd1
-                   host_name: testhost01
-                s2:
-                   service_description: service 2
-                   check_command: cmd2
-                   host_name: testhost02
-        '''
-        hostname = "testhost01"
-        self.assertRaises(HostNamesNotEqualException, self.run_config_gen, input_yaml)
-
-    def test_error_section_descriptions_not_unique(self):
-        """if the generated output contains a service section with no host_name, an exception should be thrown"""
-        input_yaml = '''
-            defaults:
-                max_check_attempts:    5
-                check_period: 2
-                notification_interval: 4
-                notification_period: 5
-                check_interval: 6
-                retry_interval: 7
-            host:
-                host_name: testhost01
-
-            services:
-                s1:
-                   service_description: service 1
-                   check_command: cmd1
-                   host_name: testhost01
-                s2:
-                   service_description: service 1
-                   check_command: cmd2
-                   host_name: testhost01
-        '''
-        hostname = "testhost01"
-        self.assertRaises(ServiceDescriptionNotUniqueException, self.run_config_gen, input_yaml)
 
     def test_yaml_merger(self):
         input_dir = "itest_testhost07_multifile_dir"

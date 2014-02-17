@@ -1,12 +1,11 @@
 import os
 import unittest
 
-
 from mock import patch, Mock
 
 
 os.environ['MONITORING_CONFIG_GENERATOR_CONFIG'] = "testdata/testconfig.yaml"
-from monitoring_config_generator.readers import (read_config,
+from monitoring_config_generator.yaml_tools.readers import (read_config,
                                                  read_config_from_file,
                                                  read_config_from_host,
                                                  Header,
@@ -97,7 +96,7 @@ ANY_PATH = '/path/to/file'
 
 class TestConfigReaders(unittest.TestCase):
 
-    @patch('monitoring_config_generator.readers.read_config_from_file')
+    @patch('monitoring_config_generator.yaml_tools.readers.read_config_from_file')
     def test_read_config_calls_read_config_from_file_with_file_uri(
             self, mock_read_config_from_file):
         for i, uri in enumerate([ANY_PATH, 'file://' + ANY_PATH]):
@@ -105,7 +104,7 @@ class TestConfigReaders(unittest.TestCase):
             mock_read_config_from_file.assert_called_with(ANY_PATH)
             self.assertEquals(i + 1, mock_read_config_from_file.call_count)
 
-    @patch('monitoring_config_generator.readers.read_config_from_host')
+    @patch('monitoring_config_generator.yaml_tools.readers.read_config_from_host')
     def test_read_config_calls_read_config_from_host_with_host_uri(
             self, mock_read_config_from_host):
         for i, uri in enumerate(['http://example.com', 'https://example.com']):
@@ -115,7 +114,7 @@ class TestConfigReaders(unittest.TestCase):
     def test_read_config_raises_exception_with_invalid_uri(self):
         self.assertRaises(ValueError, read_config, 'ftp://example.com')
 
-    @patch('monitoring_config_generator.readers.merge_yaml_files')
+    @patch('monitoring_config_generator.yaml_tools.readers.merge_yaml_files')
     @patch('os.path.getmtime')
     def test_read_config_from_file(self, getmtime_mock, merge_yaml_files_mock):
         ANY_MERGED_YAML = 'any_yaml'

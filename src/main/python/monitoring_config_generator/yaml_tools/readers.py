@@ -4,13 +4,11 @@ import os.path
 import urlparse
 from time import localtime, strftime
 
-
 import requests
 import yaml
+from monitoring_config_generator.exceptions import MonitoringConfigGeneratorException
 
-
-from .yaml_merger import merge_yaml_files
-from .exceptions import MonitoringConfigGeneratorException
+from monitoring_config_generator.yaml_tools.merger import merge_yaml_files
 
 
 def is_file(parsed_uri):
@@ -83,8 +81,8 @@ class Header(object):
 
     def serialize(self):
         lines = []
-        timeString = strftime("%Y-%m-%d %H:%M:%S", localtime())
-        lines.append("%s on %s" % (Header.MON_CONF_GEN_COMMENT, timeString))
+        time_string = strftime("%Y-%m-%d %H:%M:%S", localtime())
+        lines.append("%s on %s" % (Header.MON_CONF_GEN_COMMENT, time_string))
         if self.etag:
             lines.append("%s%s" % (Header.ETAG_COMMENT, self.etag))
         if self.mtime:

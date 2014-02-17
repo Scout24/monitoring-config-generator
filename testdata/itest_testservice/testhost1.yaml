@@ -7,6 +7,11 @@ defaults:
     max_check_attempts: 5
     check_interval: 3
     retry_interval: 5
+    check_command: any_check_command
 
 host:
     notification_options: u,c,r
+
+services:
+    service_1:
+      service_description: any_service_description
