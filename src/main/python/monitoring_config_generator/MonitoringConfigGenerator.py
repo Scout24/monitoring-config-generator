@@ -182,10 +182,7 @@ def main_method():
     except BaseException as e:
         # logging was initialized inside MonitoringConfigGenerator, that's why we will only get the logger now
         log = logging.getLogger()
-        log.exception(e)
-        if log.level is not logging.DEBUG:
-            # debug log already prints error, don't print it again
-            print >>sys.stderr, 'ERROR: %s' % str(e)
+        log.error(e)
         exit_code = 1
     finally:
         stop_time = datetime.now()
