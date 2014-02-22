@@ -173,7 +173,7 @@ class OutputWriter(object):
         self.logger.debug("Created %s" % self.output_file)
 
 
-def main_method():
+def generate_config():
     start_time = datetime.now()
     try:
         exit_code = MonitoringConfigGenerator(sys.argv[1:]).generate()
@@ -190,4 +190,4 @@ def main_method():
     sys.exit(exit_code)
 
 if __name__ == '__main__':
-    main_method()
+    generate_config()
