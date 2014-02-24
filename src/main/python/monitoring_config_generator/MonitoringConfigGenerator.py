@@ -1,68 +1,57 @@
+"""monconfgenerator
+
+Creates an Icinga monitoring configuration. It does it by querying an URL from
+which it receives a specially formatted yaml file. This file is transformed into
+a valid Icinga configuration file.
+
+Usage:
+  monconfgenerator [--debug] [--targetdir=<directory>] [--skip-checks] URL
+  monconfgenerator -h
+
+Options:
+  -h                Show this message.
+  -d --debug        Print additional information.
+  -t --targetdir    The generated Icinaga monitoring configuration is written
+                    into this directory. If no target directory is given its
+                    value is read from /etc/monitoring_config_generator/config.yaml
+  -s --skip-checks  Do not run checks on the yaml file received from the URL.
+
+"""
 from datetime import datetime
 import logging
 import logging.handlers
-import optparse
 import os
 import sys
 
+from docopt import docopt
+
 from .exceptions import (MonitoringConfigGeneratorException,
                          ConfigurationContainsUndefinedVariables,
-                         NoSuchHostname,
-                         )
+                         NoSuchHostname)
 from monitoring_config_generator.yaml_tools.readers import Header, read_config
 from monitoring_config_generator.yaml_tools.config import YamlConfig
 from .settings import CONFIG
 
 
 class MonitoringConfigGenerator(object):
+    def __init__(self, url, debug_enabled=False, target_dir=CONFIG['TARGET_DIR'], skip_checks=False):
+        self.skip_checks = skip_checks
+        self.target_dir = target_dir
+        self.source = url
 
-    def __init__(self, args=None):
-        args = [args] if isinstance(args, basestring) else args
         self.create_logger()
 
-        usage = '''
-%prog reads the yaml config of a host via file or http and generates nagios/icinga config from that
-%prog uri
-
-Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG environment variable
-'''
-        parser = optparse.OptionParser(usage=usage)
-        parser.add_option("--debug",
-                          dest="debug",
-                          action="store_true",
-                          default=False,
-                          help="Enable debug logging [%default]")
-
-        parser.add_option("--targetdir",
-                          dest="target_dir",
-                          action="store",
-                          default=CONFIG['TARGET_DIR'],
-                          type="string",
-                          help="Directory for generated config files")
-
-        parser.add_option("--skip-checks",
-                          dest="skip_checks",
-                          action="store_true",
-                          default=False,
-                          help="Skip checks on generated config")
-
-        self.options, self.args = parser.parse_args(args)
-
-        if self.options.debug:
+        if debug_enabled:
             self.output_debug_log_to_console()
 
-        self.target_dir = self.options.target_dir
         if not os.path.isdir(self.target_dir):
             raise MonitoringConfigGeneratorException("%s is not a directory" % self.target_dir)
+
         self.logger.debug("Using %s as target dir" % self.target_dir)
 
-        if len(self.args) != 1:
-            msg = "Need to get at most one uri to operate on"
-            self.logger.fatal(msg)
-            raise MonitoringConfigGeneratorException(msg)
-        self.logger.debug("Args: %s" % self.args)
-        self.source = self.args[0]
-        self.logger.info("MonitoringConfigGenerator start: reading from %s, writing to %s" % (self.source, self.target_dir))
+        self.logger.debug("Using URL: %s" % self.source)
+        self.logger.info(
+            "MonitoringConfigGenerator start: reading from %s, writing to %s" % (self.source, self.target_dir))
 
     def create_logger(self):
         self.logger = logging.getLogger()
@@ -110,7 +99,7 @@ Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG enviro
 
         try:
             yaml_config = YamlConfig(raw_yaml_config,
-                                     skip_checks=self.options.skip_checks)
+                                     skip_checks=self.skip_checks)
         except ConfigurationContainsUndefinedVariables:
             self.logger.error("Configuration contained undefined variables!")
             return 1
@@ -127,7 +116,6 @@ Configuration file can be specified in MONITORING_CONFIG_GENERATOR_CONFIG enviro
 
 
 class YamlToIcinga(object):
-
     def __init__(self, yaml_config, header):
         self.icinga_lines = []
         self.indent = CONFIG['INDENT']
@@ -161,7 +149,6 @@ class YamlToIcinga(object):
 
 
 class OutputWriter(object):
-
     def __init__(self, output_file):
         self.logger = logging.getLogger("OutputWriter")
         self.output_file = output_file
@@ -173,10 +160,10 @@ class OutputWriter(object):
         self.logger.debug("Created %s" % self.output_file)
 
 
-def generate_config():
+def generate_config(url, debug, target_dir, skip_checks):
     start_time = datetime.now()
     try:
-        exit_code = MonitoringConfigGenerator(sys.argv[1:]).generate()
+        exit_code = MonitoringConfigGenerator(url, debug, target_dir, skip_checks).generate()
     except SystemExit as e:
         exit_code = e.code
     except BaseException as e:
@@ -189,5 +176,8 @@ def generate_config():
         logging.getLogger().info("finished in %s" % (stop_time - start_time))
     sys.exit(exit_code)
 
+
 if __name__ == '__main__':
-    generate_config()
+    arg = docopt(__doc__, version='0.1.0')
+
+    generate_config(arg['URL'], arg['--targetdir'], arg['--skip-checks'], arg['--debug'])

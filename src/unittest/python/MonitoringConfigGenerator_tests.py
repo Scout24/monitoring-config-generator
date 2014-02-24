@@ -16,34 +16,23 @@ from test_logger import init_test_logger
 class TestMonitoringConfigGeneratorConstructor(unittest.TestCase):
     def test_init(self):
         target_uri = 'http://example.com:8935/monitoring'
-        mcg = MonitoringConfigGenerator(args=target_uri)
+        mcg = MonitoringConfigGenerator(url=target_uri)
         self.assertEquals(target_uri, mcg.source)
 
     @patch(
         'monitoring_config_generator.MonitoringConfigGenerator.MonitoringConfigGenerator.output_debug_log_to_console')
     def test_output_debug_log_to_console_called(self,
                                                 mock_output_debug_log_to_console):
-        args = ['--debug', 'http://example.com:8935/monitoring']
-        mcg = MonitoringConfigGenerator(args=args)
+        MonitoringConfigGenerator(url='http://example.com:8935/monitoring', debug_enabled=True)
         mock_output_debug_log_to_console.assert_called_once_with()
 
     @patch('os.path.isdir')
     def test_target_dir_not_dir_raises_exception(self, mock_isdir):
         mock_isdir.return_value = False
-        self.assertRaises(MonitoringConfigGeneratorException,
-                          MonitoringConfigGenerator,
-                          ['--targetdir', '/not/a/dir'])
 
-    def test_missing_uri_raises_exception(self):
         self.assertRaises(MonitoringConfigGeneratorException,
                           MonitoringConfigGenerator,
-                          ['--debug'])
-
-    def test_too_many_uris_raises_exception(self):
-        self.assertRaises(MonitoringConfigGeneratorException,
-                          MonitoringConfigGenerator,
-                          ['http://example.com:8935/monitoring',
-                           'http://example.com:8935/monitoring'])
+                          ['any_url', False, '/not_a_dir'])
 
 
 class TestMonitoringConfigGeneratorGenerate(unittest.TestCase):
@@ -51,7 +40,7 @@ class TestMonitoringConfigGeneratorGenerate(unittest.TestCase):
     def test_empty_yaml_returns_one(self, read_config_mock):
         read_config_mock.return_value = (None, None)
         target_uri = 'http://example.com:8935/monitoring'
-        mcg = MonitoringConfigGenerator(args=target_uri)
+        mcg = MonitoringConfigGenerator(target_uri)
         exit_code = mcg.generate()
         self.assertEquals(1, exit_code)
 
@@ -61,7 +50,7 @@ class TestMonitoringConfigGeneratorGenerate(unittest.TestCase):
         read_config_mock.return_value = (True, True)
         YamlConfigMock.side_effect = ConfigurationContainsUndefinedVariables
         target_uri = 'http://example.com:8935/monitoring'
-        mcg = MonitoringConfigGenerator(args=target_uri)
+        mcg = MonitoringConfigGenerator(target_uri)
         exit_code = mcg.generate()
         self.assertEquals(1, exit_code)
 
@@ -71,7 +60,7 @@ class TestMonitoringConfigGeneratorGenerate(unittest.TestCase):
         read_config_mock.return_value = (True, True)
         YamlConfigMock.return_value = Mock(host_name=None)
         target_uri = 'http://example.com:8935/monitoring'
-        mcg = MonitoringConfigGenerator(args=target_uri)
+        mcg = MonitoringConfigGenerator(target_uri)
         self.assertRaises(NoSuchHostname, mcg.generate)
 
 
@@ -155,7 +144,7 @@ class Test(unittest.TestCase):
         MonitoringConfigGenerator(yaml2).generate()
         received = os.path.join(CONFIG['TARGET_DIR'], 'servicetest.cfg')
         expected = os.path.join(input_directory, 'config_from_testhost%d.cfg' %
-                correct)
+                                                 correct)
         self.assert_that_contents_of_files_is_identical(expected, received)
 
     def test_service_respects_mtime_with_older_file(self):
