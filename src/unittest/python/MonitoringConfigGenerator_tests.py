@@ -63,6 +63,20 @@ class TestMonitoringConfigGeneratorGenerate(unittest.TestCase):
         mcg = MonitoringConfigGenerator(target_uri)
         self.assertRaises(NoSuchHostname, mcg.generate)
 
+    @patch('monitoring_config_generator.MonitoringConfigGenerator.YamlConfig')
+    @patch('monitoring_config_generator.MonitoringConfigGenerator.read_config')
+    @patch('monitoring_config_generator.MonitoringConfigGenerator.MonitoringConfigGenerator._is_newer')
+    def test_if_the_config_is_not_newer_the_old_config_will_be_preserved(self,
+                                                                         is_newer,
+                                                                         read_config_mock,
+                                                                         YamlConfigMock):
+        read_config_mock.return_value = (True, True)
+        YamlConfigMock.return_value = Mock(host_name=None)
+        is_newer.return_value = False
+        target_uri = 'http://example.com:8935/monitoring'
+        mcg = MonitoringConfigGenerator(target_uri)
+        self.assertEquals(2, mcg.generate())
+
 
 class Test(unittest.TestCase):
     def setUp(self):

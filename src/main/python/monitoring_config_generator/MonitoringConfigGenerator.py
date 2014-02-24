@@ -33,6 +33,11 @@ from monitoring_config_generator.yaml_tools.config import YamlConfig
 from .settings import CONFIG
 
 
+CONFIG_WRITTEN = 0
+ERROR = 1
+CONFIG_NOT_WRITTEN = 2
+
+
 class MonitoringConfigGenerator(object):
     def __init__(self, url, debug_enabled=False, target_dir=CONFIG['TARGET_DIR'], skip_checks=False):
         self.skip_checks = skip_checks
@@ -78,35 +83,35 @@ class MonitoringConfigGenerator(object):
     def output_path(self, hostname):
         return os.path.join(self.target_dir, hostname + '.cfg')
 
-    def write_monitoring_config(self, header, yaml_config):
-        host_name = yaml_config.host_name
+    def _is_newer(self, header, host_name):
         if not host_name:
             raise NoSuchHostname('hostname not found')
         output_path = self.output_path(host_name)
-        header = header
         old_header = Header.parse(output_path)
-        if not header.is_newer_than(old_header):
-            self.logger.debug("Config didn't change, keeping old version")
-        else:
-            self.logger.debug("Config changed")
-            self.write_output(output_path, yaml_config, header)
+        return header.is_newer_than(old_header)
+
+    def write_monitoring_config(self, header, yaml_config):
+        host_name = yaml_config.host_name
+        output_path = self.output_path(host_name)
+        self.write_output(output_path, yaml_config, header)
 
     def generate(self):
         raw_yaml_config, header = read_config(self.source)
-
         if raw_yaml_config is None:
-            return 1
+            return ERROR
 
         try:
             yaml_config = YamlConfig(raw_yaml_config,
                                      skip_checks=self.skip_checks)
         except ConfigurationContainsUndefinedVariables:
             self.logger.error("Configuration contained undefined variables!")
-            return 1
+            return ERROR
 
-        if yaml_config.host:
+        if yaml_config.host and self._is_newer(header, yaml_config.host_name):
             self.write_monitoring_config(header, yaml_config)
-        return 0
+            return CONFIG_WRITTEN
+        else:
+            return CONFIG_NOT_WRITTEN
 
     @staticmethod
     def write_output(output_path, yaml_config, header):
