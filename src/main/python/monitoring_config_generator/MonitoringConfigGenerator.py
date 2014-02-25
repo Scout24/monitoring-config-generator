@@ -3,6 +3,8 @@
 Creates an Icinga monitoring configuration. It does it by querying an URL from
 which it receives a specially formatted yaml file. This file is transformed into
 a valid Icinga configuration file.
+If no URL is given it reads it's default configuration from file system. The
+configuration file is: /etc/monitoring_config_generator/config.yaml'
 
 Usage:
   monconfgenerator [--debug] [--targetdir=<directory>] [--skip-checks] [URL]
