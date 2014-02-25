@@ -5,16 +5,16 @@ which it receives a specially formatted yaml file. This file is transformed into
 a valid Icinga configuration file.
 
 Usage:
-  monconfgenerator [--debug] [--targetdir=<directory>] [--skip-checks] URL
+  monconfgenerator [--debug] [--targetdir=<directory>] [--skip-checks] [URL]
   monconfgenerator -h
 
 Options:
   -h                Show this message.
-  -d --debug        Print additional information.
-  -t --targetdir    The generated Icinaga monitoring configuration is written
+  --debug           Print additional information.
+  --targetdir=DIR   The generated Icinga monitoring configuration is written
                     into this directory. If no target directory is given its
                     value is read from /etc/monitoring_config_generator/config.yaml
-  -s --skip-checks  Do not run checks on the yaml file received from the URL.
+  --skip-checks     Do not run checks on the yaml file received from the URL.
 
 """
 from datetime import datetime
@@ -165,10 +165,14 @@ class OutputWriter(object):
         self.logger.debug("Created %s" % self.output_file)
 
 
-def generate_config(url, debug, target_dir, skip_checks):
+def generate_config():
+    arg = docopt(__doc__, version='0.1.0')
     start_time = datetime.now()
     try:
-        exit_code = MonitoringConfigGenerator(url, debug, target_dir, skip_checks).generate()
+        exit_code = MonitoringConfigGenerator(arg['URL'],
+                                              arg['--debug'],
+                                              arg['--targetdir'],
+                                              arg['--skip-checks']).generate()
     except SystemExit as e:
         exit_code = e.code
     except BaseException as e:
@@ -183,6 +187,4 @@ def generate_config(url, debug, target_dir, skip_checks):
 
 
 if __name__ == '__main__':
-    arg = docopt(__doc__, version='0.1.0')
-
-    generate_config(arg['URL'], arg['--targetdir'], arg['--skip-checks'], arg['--debug'])
+    generate_config()
