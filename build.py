@@ -1,6 +1,9 @@
 
 from pybuilder.core import use_plugin, init, Author
 
+import sys
+print sys.path
+
 use_plugin("python.core")
 use_plugin("python.unittest")
 use_plugin('python.install_dependencies')
@@ -20,14 +23,14 @@ authors = [Author('Schlomo Schapiro', ''),
 license="GPL"
 description="Get monitoring configuration in YAML format via HTTP and generate icinga host and check config"
 summary = "Fluent interface facade for Michael Foord's mock."
-version = '5'
+version = '5.0.1'
 url="https://github.com/ImmobilienScout24/monitoring-config-generator.git"
 
 
 @init
 def set_properties(project):
     project.depends_on("docopt")
-    project.depends_on('pyyaml')
+    project.depends_on('PyYAML')
     project.depends_on('mock')
     project.depends_on('requests')
     project.set_property('distutils_classifiers', [
