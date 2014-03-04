@@ -82,44 +82,37 @@ class MonitoringConfigGenerator(object):
         self.logger.setLevel(logging.DEBUG)
         self.logger.debug("Debug logging enabled via command line")
 
-    def output_path(self, hostname):
-        return os.path.join(self.target_dir, hostname + '.cfg')
-
-    def _is_newer(self, header, host_name):
+    def _is_newer(self, header_source, host_name):
         if not host_name:
             raise NoSuchHostname('hostname not found')
         output_path = self.output_path(host_name)
         old_header = Header.parse(output_path)
-        return header.is_newer_than(old_header)
+        return header_source.is_newer_than(old_header)
 
-    def write_monitoring_config(self, header, yaml_config):
-        host_name = yaml_config.host_name
-        output_path = self.output_path(host_name)
-        self.write_output(output_path, yaml_config, header)
+    def output_path(self, file_name):
+        return os.path.join(self.target_dir, file_name)
+
+    def write_output(self, file_name, yaml_icinga):
+        lines = yaml_icinga.icinga_lines
+        output_writer = OutputWriter(self.output_path(file_name))
+        output_writer.write_lines(lines)
 
     def generate(self):
-        raw_yaml_config, header = read_config(self.source)
+        raw_yaml_config, header_source = read_config(self.source)
+
         if raw_yaml_config is None:
-            return ERROR
+            raise SystemExit('Raw yaml config from source is "None".')
 
-        try:
-            yaml_config = YamlConfig(raw_yaml_config,
-                                     skip_checks=self.skip_checks)
-        except ConfigurationContainsUndefinedVariables:
-            self.logger.error("Configuration contained undefined variables!")
-            return ERROR
+        yaml_config = YamlConfig(raw_yaml_config,
+                                 skip_checks=self.skip_checks)
 
-        if yaml_config.host and self._is_newer(header, yaml_config.host_name):
-            self.write_monitoring_config(header, yaml_config)
-            return CONFIG_WRITTEN
+        if yaml_config.host and self._is_newer(header_source, yaml_config.host_name):
+            file_name = '%s.cfg' % yaml_config.host_name
+            yaml_icinga = YamlToIcinga(yaml_config, header_source)
+            self.write_output(file_name, yaml_icinga)
+            return file_name
         else:
-            return CONFIG_NOT_WRITTEN
-
-    @staticmethod
-    def write_output(output_path, yaml_config, header):
-        lines = YamlToIcinga(yaml_config, header).icinga_lines
-        output_writer = OutputWriter(output_path)
-        output_writer.write_lines(lines)
+            return None
 
 
 class YamlToIcinga(object):
@@ -171,10 +164,14 @@ def generate_config():
     arg = docopt(__doc__, version='0.1.0')
     start_time = datetime.now()
     try:
-        exit_code = MonitoringConfigGenerator(arg['URL'],
+        file_name = MonitoringConfigGenerator(arg['URL'],
                                               arg['--debug'],
                                               arg['--targetdir'],
                                               arg['--skip-checks']).generate()
+        exit_code = CONFIG_WRITTEN if file_name else CONFIG_NOT_WRITTEN
+    except ConfigurationContainsUndefinedVariables:
+        logging.error("Configuration contained undefined variables!")
+        exit_code = ERROR
     except SystemExit as e:
         exit_code = e.code
     except BaseException as e:

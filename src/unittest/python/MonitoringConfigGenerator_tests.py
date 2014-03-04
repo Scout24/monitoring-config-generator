@@ -37,45 +37,95 @@ class TestMonitoringConfigGeneratorConstructor(unittest.TestCase):
 
 class TestMonitoringConfigGeneratorGenerate(unittest.TestCase):
     @patch('monitoring_config_generator.MonitoringConfigGenerator.read_config')
-    def test_empty_yaml_returns_one(self, read_config_mock):
+    def test_empty_yaml_source_raises_syste_exit(self, read_config_mock):
         read_config_mock.return_value = (None, None)
         target_uri = 'http://example.com:8935/monitoring'
         mcg = MonitoringConfigGenerator(target_uri)
-        exit_code = mcg.generate()
-        self.assertEquals(1, exit_code)
+        self.assertRaises(SystemExit, mcg.generate)
 
     @patch('monitoring_config_generator.MonitoringConfigGenerator.YamlConfig')
     @patch('monitoring_config_generator.MonitoringConfigGenerator.read_config')
-    def test_unexpanded_variables_return_one(self, read_config_mock, YamlConfigMock):
+    def test_unexpanded_variables_raises_an_error(self, read_config_mock, yaml_config_mock):
         read_config_mock.return_value = (True, True)
-        YamlConfigMock.side_effect = ConfigurationContainsUndefinedVariables
+        yaml_config_mock.side_effect = ConfigurationContainsUndefinedVariables
         target_uri = 'http://example.com:8935/monitoring'
         mcg = MonitoringConfigGenerator(target_uri)
-        exit_code = mcg.generate()
-        self.assertEquals(1, exit_code)
+        self.assertRaises(ConfigurationContainsUndefinedVariables, mcg.generate)
 
     @patch('monitoring_config_generator.MonitoringConfigGenerator.YamlConfig')
     @patch('monitoring_config_generator.MonitoringConfigGenerator.read_config')
-    def test_missing_hostname_raises_exception(self, read_config_mock, YamlConfigMock):
+    def test_missing_hostname_raises_an_error(self, read_config_mock, yaml_config_mock):
         read_config_mock.return_value = (True, True)
-        YamlConfigMock.return_value = Mock(host_name=None)
+        yaml_config_mock.return_value = Mock(host_name=None)
         target_uri = 'http://example.com:8935/monitoring'
         mcg = MonitoringConfigGenerator(target_uri)
         self.assertRaises(NoSuchHostname, mcg.generate)
 
     @patch('monitoring_config_generator.MonitoringConfigGenerator.YamlConfig')
+    @patch('monitoring_config_generator.MonitoringConfigGenerator.YamlToIcinga')
     @patch('monitoring_config_generator.MonitoringConfigGenerator.read_config')
+    @patch('monitoring_config_generator.MonitoringConfigGenerator.MonitoringConfigGenerator.write_output')
     @patch('monitoring_config_generator.MonitoringConfigGenerator.MonitoringConfigGenerator._is_newer')
-    def test_if_the_config_is_not_newer_the_old_config_will_be_preserved(self,
-                                                                         is_newer,
-                                                                         read_config_mock,
-                                                                         YamlConfigMock):
-        read_config_mock.return_value = (True, True)
-        YamlConfigMock.return_value = Mock(host_name=None)
-        is_newer.return_value = False
-        target_uri = 'http://example.com:8935/monitoring'
-        mcg = MonitoringConfigGenerator(target_uri)
-        self.assertEquals(2, mcg.generate())
+    def test_return_the_file_name_if_the_config_changed(self,
+                                                        is_newer_mock,
+                                                        write_output_mock,
+                                                        read_config_mock,
+                                                        yaml_to_icinga_mock,
+                                                        yaml_config_mock):
+        read_config_mock.return_value = ({'host': None, 'services': None}, Header())
+        is_newer_mock.return_value = True
+        yaml_instance_mock = Mock()
+        yaml_config_mock.return_value = yaml_instance_mock
+        yaml_instance_mock.host = 'any_host_section'
+        yaml_instance_mock.host_name = 'any_hostname'
+
+        mcg = MonitoringConfigGenerator('http://example.com:8935/monitoring')
+
+        self.assertEquals('any_hostname.cfg', mcg.generate())
+
+    @patch('monitoring_config_generator.MonitoringConfigGenerator.YamlConfig')
+    @patch('monitoring_config_generator.MonitoringConfigGenerator.YamlToIcinga')
+    @patch('monitoring_config_generator.MonitoringConfigGenerator.read_config')
+    @patch('monitoring_config_generator.MonitoringConfigGenerator.MonitoringConfigGenerator.write_output')
+    @patch('monitoring_config_generator.MonitoringConfigGenerator.MonitoringConfigGenerator._is_newer')
+    def test_returns_none_if_the_config_did_not_change(self,
+                                                       is_newer_mock,
+                                                       write_output_mock,
+                                                       read_config_mock,
+                                                       yaml_to_icinga_mock,
+                                                       yaml_config_mock):
+        read_config_mock.return_value = ({'host': None, 'services': None}, Header())
+        is_newer_mock.return_value = False
+        yaml_instance_mock = Mock()
+        yaml_config_mock.return_value = yaml_instance_mock
+        yaml_instance_mock.host = 'any_host_section'
+        yaml_instance_mock.host_name = 'any_hostname'
+
+        mcg = MonitoringConfigGenerator('http://example.com:8935/monitoring')
+
+        self.assertEquals(None, mcg.generate())
+
+    @patch('monitoring_config_generator.MonitoringConfigGenerator.YamlConfig')
+    @patch('monitoring_config_generator.MonitoringConfigGenerator.YamlToIcinga')
+    @patch('monitoring_config_generator.MonitoringConfigGenerator.read_config')
+    @patch('monitoring_config_generator.MonitoringConfigGenerator.MonitoringConfigGenerator.write_output')
+    @patch('monitoring_config_generator.MonitoringConfigGenerator.MonitoringConfigGenerator._is_newer')
+    def test_returns_none_if_the_config_did_not_change(self,
+                                                       is_newer_mock,
+                                                       write_output_mock,
+                                                       read_config_mock,
+                                                       yaml_to_icinga_mock,
+                                                       yaml_config_mock):
+        read_config_mock.return_value = ({'host': None, 'services': None}, Header())
+        is_newer_mock.return_value = True
+        yaml_instance_mock = Mock()
+        yaml_config_mock.return_value = yaml_instance_mock
+        yaml_instance_mock.host = None
+        yaml_instance_mock.host_name = 'any_hostname'
+
+        mcg = MonitoringConfigGenerator('http://example.com:8935/monitoring')
+
+        self.assertEquals(None, mcg.generate())
 
 
 class Test(unittest.TestCase):
@@ -128,10 +178,14 @@ class Test(unittest.TestCase):
         self.assertFalse(os.path.exists(output_path), "Generator generated file for undefined variables")
 
     def test_generated_config_with_missing__variable(self):
-        self.run_config_generator_for_invalid_file("itest_testhost08_variables", "testhost08.other.domain.cfg")
+        yaml_source = self.get_yaml_file_from_directory("itest_testhost08_variables")
+        config_generator = MonitoringConfigGenerator(yaml_source)
+        self.assertRaises(ConfigurationContainsUndefinedVariables, config_generator.generate)
 
     def test_generated_config_with_missing_service_variable(self):
-        self.run_config_generator_for_invalid_file("itest_testhost09_variables", "testhost09.other.domain.cfg")
+        yaml_source = self.get_yaml_file_from_directory("itest_testhost09_variables")
+        config_generator = MonitoringConfigGenerator(yaml_source)
+        self.assertRaises(ConfigurationContainsUndefinedVariables, config_generator.generate)
 
     def test_generates_config_from_new_file(self):
         self.run_config_generator_on_directory("itest_testhost03_new_format")

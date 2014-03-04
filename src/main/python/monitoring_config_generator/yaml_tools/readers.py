@@ -105,7 +105,7 @@ class Header(object):
                     mtime = extract(Header.MTIME_COMMMENT, mtime)
                     if etag and mtime:
                         break
-        except IOError:
+        except IOError as e:
             # it is totally fine to not have an etag, in that case there
             # will just be no caching and the server will have to deliver the data again
             pass
