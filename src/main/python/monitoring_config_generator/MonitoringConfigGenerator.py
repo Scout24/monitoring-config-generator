@@ -82,10 +82,10 @@ class MonitoringConfigGenerator(object):
         self.logger.setLevel(logging.DEBUG)
         self.logger.debug("Debug logging enabled via command line")
 
-    def _is_newer(self, header_source, host_name):
-        if not host_name:
+    def _is_newer(self, header_source, hostname):
+        if not hostname:
             raise NoSuchHostname('hostname not found')
-        output_path = self.output_path(host_name)
+        output_path = self.output_path(self.create_filename(hostname))
         old_header = Header.parse(output_path)
         return header_source.is_newer_than(old_header)
 
@@ -97,6 +97,9 @@ class MonitoringConfigGenerator(object):
         output_writer = OutputWriter(self.output_path(file_name))
         output_writer.write_lines(lines)
 
+    def create_filename(self, hostname):
+        return '%s.cfg' % hostname
+
     def generate(self):
         raw_yaml_config, header_source = read_config(self.source)
 
@@ -107,7 +110,7 @@ class MonitoringConfigGenerator(object):
                                  skip_checks=self.skip_checks)
 
         if yaml_config.host and self._is_newer(header_source, yaml_config.host_name):
-            file_name = '%s.cfg' % yaml_config.host_name
+            file_name = self.create_filename(yaml_config.host_name)
             yaml_icinga = YamlToIcinga(yaml_config, header_source)
             self.write_output(file_name, yaml_icinga)
             return file_name
