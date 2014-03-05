@@ -57,8 +57,8 @@ class MonitoringConfigGenerator(object):
         self.logger.debug("Using %s as target dir" % self.target_dir)
 
         self.logger.debug("Using URL: %s" % self.source)
-        self.logger.info(
-            "MonitoringConfigGenerator start: reading from %s, writing to %s" % (self.source, self.target_dir))
+        self.logger.debug("MonitoringConfigGenerator start: reading from %s, writing to %s" %
+                          (self.source, self.target_dir))
 
     def create_logger(self):
         self.logger = logging.getLogger()

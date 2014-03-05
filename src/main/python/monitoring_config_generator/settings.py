@@ -40,7 +40,6 @@ ICINGA_SERVICE_DIRECTIVES = ["host_name",
 def read_config(cfile=CONFIG_FILE):
     # merge defaults with config from config file
     if os.path.exists(cfile):
-        print 'reading config from %s' % cfile
         config_file = open(cfile)
         new_config = yaml.load(config_file)
         config_file.close()
