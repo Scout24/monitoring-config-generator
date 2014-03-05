@@ -104,7 +104,7 @@ class MonitoringConfigGenerator(object):
         raw_yaml_config, header_source = read_config(self.source)
 
         if raw_yaml_config is None:
-            raise SystemExit('Raw yaml config from source is "None".')
+            raise SystemExit("Raw yaml config from source '%s' is 'None'." % self.source)
 
         yaml_config = YamlConfig(raw_yaml_config,
                                  skip_checks=self.skip_checks)

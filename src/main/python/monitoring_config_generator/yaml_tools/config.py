@@ -138,21 +138,20 @@ class YamlConfig(object):
             if not variables_applied:
                 break
 
-    def host_configuration_contains_undefined_variables(self):
-        host_settings = self.host
-        for setting_key in host_settings:
-            if "${" in str(host_settings[setting_key]):
-                return True
-        return False
+    def _detect_undefined_variables(self, settings):
+        undefined_variables = set()
+        for setting_key in settings:
+            if "${" in str(settings[setting_key]):
+                undefined_variables.add(settings[setting_key])
 
-    def service_configuration_contains_undefined_variables(self):
-        for settings_of_single_service in self.services:
-            for setting_key in settings_of_single_service:
-                if "${" in str(settings_of_single_service[setting_key]):
-                    return True
-        return False
+        return undefined_variables
 
     def configuration_contains_undefined_variables(self):
-        if self.host_configuration_contains_undefined_variables() or \
-                self.service_configuration_contains_undefined_variables():
-            raise ConfigurationContainsUndefinedVariables
+        undefined_variables = set()
+        undefined_variables.update(self._detect_undefined_variables(self.host))
+        for settings_of_single_service in self.services:
+            undefined_variables.update(self._detect_undefined_variables(settings_of_single_service))
+        if undefined_variables:
+            raise ConfigurationContainsUndefinedVariables("Monitoring yaml contains undefined variables: '%s'" %
+                                                          ', '.join(undefined_variables))
+

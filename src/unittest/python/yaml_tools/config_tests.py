@@ -145,7 +145,7 @@ class YamlConfigTest(unittest.TestCase):
         self.assertEquals(self.service_definitions[0].get("notification_interval"), 3)
         self.assertEquals(self.service_definitions[0].get("notification_period"), 4)
 
-    def test_raises_an_error_if_there_are_any_unresolved_variables(self):
+    def test_raises_an_error_if_there_are_any_undefined_variables(self):
         input_yaml = """
             defaults:
                 host_name: host.domain.tld
@@ -165,6 +165,31 @@ class YamlConfigTest(unittest.TestCase):
         """
 
         self.assertRaises(ConfigurationContainsUndefinedVariables, self.run_config_gen, input_yaml)
+
+    def test_undefined_variables_exception_contains_the_list_of_undefined_variables(self):
+        input_yaml = """
+            defaults:
+                host_name: host.domain.tld
+                check_period: ${VARIABLE1}
+                max_check_attempts: 5
+                notification_interval: 3
+                notification_period: 4
+                check_interval: 6
+                retry_interval: 7
+                check_command: any_check_command
+                service_description: any_service_name
+            host:
+                notification_options: u,d
+            services:
+                service_1:
+                    service_description: ${VARIABLE2}
+        """
+
+        try:
+            self.run_config_gen(input_yaml)
+        except ConfigurationContainsUndefinedVariables as e:
+            self.assertRegexpMatches(str(e), '\'\${VARIABLE2}, \${VARIABLE1}\'')
+
 
     def test_raises_an_error_if_there_are_any_not_supported_sections(self):
         input_yaml = '''
