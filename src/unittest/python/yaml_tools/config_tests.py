@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import unittest
 
@@ -188,7 +189,7 @@ class YamlConfigTest(unittest.TestCase):
         try:
             self.run_config_gen(input_yaml)
         except ConfigurationContainsUndefinedVariables as e:
-            self.assertRegexpMatches(str(e), '\'\${VARIABLE2}, \${VARIABLE1}\'')
+            self.assertTrue(re.compile('\'\$\{VARIABLE2\}, \$\{VARIABLE1\}\'').search(str(e)))
 
 
     def test_raises_an_error_if_there_are_any_not_supported_sections(self):
