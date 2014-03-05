@@ -171,7 +171,7 @@ class YamlConfigTest(unittest.TestCase):
         input_yaml = """
             defaults:
                 host_name: host.domain.tld
-                check_period: ${VARIABLE1}
+                check_period: any_long_string_${VARIABLE1}_suffix
                 max_check_attempts: 5
                 notification_interval: 3
                 notification_period: 4
@@ -183,7 +183,7 @@ class YamlConfigTest(unittest.TestCase):
                 notification_options: u,d
             services:
                 service_1:
-                    service_description: ${VARIABLE2}
+                    service_description: any_long:string_${VARIABLE2}_suffix
         """
 
         try:

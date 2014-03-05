@@ -1,4 +1,5 @@
 import logging
+import re
 
 from monitoring_config_generator.exceptions import (UnknownSectionException,
                                                     MandatoryDirectiveMissingException,
@@ -12,6 +13,7 @@ from monitoring_config_generator.yaml_tools.merger import dict_merge
 
 
 SUPPORTED_SECTIONS = ['defaults', 'variables', 'host', 'services']
+VARIABLE_PATTERN = '\$\{[^}]+\}'
 
 
 class YamlConfig(object):
@@ -141,8 +143,9 @@ class YamlConfig(object):
     def _detect_undefined_variables(self, settings):
         undefined_variables = set()
         for setting_key in settings:
-            if "${" in str(settings[setting_key]):
-                undefined_variables.add(settings[setting_key])
+            variables = re.findall(VARIABLE_PATTERN, str(settings[setting_key]))
+            if variables:
+                undefined_variables.update(variables)
 
         return undefined_variables
 
