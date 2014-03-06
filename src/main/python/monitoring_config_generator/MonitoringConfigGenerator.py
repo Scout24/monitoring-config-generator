@@ -21,7 +21,6 @@ Options:
 """
 from datetime import datetime
 import logging
-import logging.handlers
 import os
 import sys
 
@@ -30,6 +29,7 @@ from docopt import docopt
 from .exceptions import (MonitoringConfigGeneratorException,
                          ConfigurationContainsUndefinedVariables,
                          NoSuchHostname)
+from monitoring_config_generator import set_log_level_to_debug
 from monitoring_config_generator.yaml_tools.readers import Header, read_config
 from monitoring_config_generator.yaml_tools.config import YamlConfig
 from .settings import CONFIG
@@ -39,6 +39,8 @@ CONFIG_WRITTEN = 0
 ERROR = 1
 CONFIG_NOT_WRITTEN = 2
 
+LOG = logging.getLogger("monconfupdater")
+
 
 class MonitoringConfigGenerator(object):
     def __init__(self, url, debug_enabled=False, target_dir=CONFIG['TARGET_DIR'], skip_checks=False):
@@ -46,41 +48,16 @@ class MonitoringConfigGenerator(object):
         self.target_dir = target_dir
         self.source = url
 
-        self.create_logger()
-
         if debug_enabled:
-            self.output_debug_log_to_console()
+            set_log_level_to_debug()
 
         if not os.path.isdir(self.target_dir):
             raise MonitoringConfigGeneratorException("%s is not a directory" % self.target_dir)
 
-        self.logger.debug("Using %s as target dir" % self.target_dir)
-
-        self.logger.debug("Using URL: %s" % self.source)
-        self.logger.debug("MonitoringConfigGenerator start: reading from %s, writing to %s" %
-                          (self.source, self.target_dir))
-
-    def create_logger(self):
-        self.logger = logging.getLogger()
-        if len(self.logger.handlers) == 0:
-            try:
-                loghandler = logging.handlers.SysLogHandler(address='/dev/log')
-            except:
-                # if we cannot setup a SysLogger (maybe we are running on Win) log to console as last resort
-                loghandler = logging.StreamHandler()
-
-            format_string = 'monitoring_config_generator[' + str(os.getpid()) + ']: %(levelname)s: %(message)s'
-            loghandler.setFormatter(logging.Formatter(format_string))
-            self.logger.addHandler(loghandler)
-        self.logger.setLevel(logging.INFO)
-
-    def output_debug_log_to_console(self):
-        loghandler = logging.StreamHandler()
-        loghandler.setFormatter(
-            logging.Formatter('MonitoringConfigGenerator[%(filename)s:%(lineno)d]: %(levelname)s: %(message)s'))
-        self.logger.addHandler(loghandler)
-        self.logger.setLevel(logging.DEBUG)
-        self.logger.debug("Debug logging enabled via command line")
+        LOG.debug("Using %s as target dir" % self.target_dir)
+        LOG.debug("Using URL: %s" % self.source)
+        LOG.debug("MonitoringConfigGenerator start: reading from %s, writing to %s" %
+                  (self.source, self.target_dir))
 
     def _is_newer(self, header_source, hostname):
         if not hostname:
@@ -153,14 +130,13 @@ class YamlToIcinga(object):
 
 class OutputWriter(object):
     def __init__(self, output_file):
-        self.logger = logging.getLogger("OutputWriter")
         self.output_file = output_file
 
     def write_lines(self, lines):
         with open(self.output_file, 'w') as f:
             for line in lines:
                 f.write(line + "\n")
-        self.logger.debug("Created %s" % self.output_file)
+        LOG.debug("Created %s" % self.output_file)
 
 
 def generate_config():
@@ -173,18 +149,16 @@ def generate_config():
                                               arg['--skip-checks']).generate()
         exit_code = CONFIG_WRITTEN if file_name else CONFIG_NOT_WRITTEN
     except ConfigurationContainsUndefinedVariables:
-        logging.error("Configuration contained undefined variables!")
+        LOG.error("Configuration contained undefined variables!")
         exit_code = ERROR
     except SystemExit as e:
         exit_code = e.code
     except BaseException as e:
-        # logging was initialized inside MonitoringConfigGenerator, that's why we will only get the logger now
-        log = logging.getLogger()
-        log.error(e)
+        LOG.error(e)
         exit_code = 1
     finally:
         stop_time = datetime.now()
-        logging.getLogger().info("finished in %s" % (stop_time - start_time))
+        LOG.info("finished in %s" % (stop_time - start_time))
     sys.exit(exit_code)
 
 

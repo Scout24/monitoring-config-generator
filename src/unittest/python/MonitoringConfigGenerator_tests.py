@@ -19,12 +19,10 @@ class TestMonitoringConfigGeneratorConstructor(unittest.TestCase):
         mcg = MonitoringConfigGenerator(url=target_uri)
         self.assertEquals(target_uri, mcg.source)
 
-    @patch(
-        'monitoring_config_generator.MonitoringConfigGenerator.MonitoringConfigGenerator.output_debug_log_to_console')
-    def test_output_debug_log_to_console_called(self,
-                                                mock_output_debug_log_to_console):
+    @patch( 'monitoring_config_generator.MonitoringConfigGenerator.set_log_level_to_debug')
+    def test_output_debug_log_to_console_called(self, set_level_to_debug_log):
         MonitoringConfigGenerator(url='http://example.com:8935/monitoring', debug_enabled=True)
-        mock_output_debug_log_to_console.assert_called_once_with()
+        set_level_to_debug_log.assert_called_once_with()
 
     @patch('os.path.isdir')
     def test_target_dir_not_dir_raises_exception(self, mock_isdir):
