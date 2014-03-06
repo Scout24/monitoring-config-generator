@@ -39,7 +39,7 @@ CONFIG_WRITTEN = 0
 ERROR = 1
 CONFIG_NOT_WRITTEN = 2
 
-LOG = logging.getLogger("monconfupdater")
+LOG = logging.getLogger("monconfgenerator")
 
 
 class MonitoringConfigGenerator(object):
