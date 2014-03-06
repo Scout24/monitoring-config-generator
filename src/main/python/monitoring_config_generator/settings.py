@@ -1,7 +1,11 @@
+import logging
 import os
 import sys
+
 import yaml
 
+
+LOG = logging.getLogger("monconfgenerator")
 
 # for local testing use MONITORING_CONFIG_GENERATOR_CONFIG=../testdata/testconfig.yaml
 
@@ -11,7 +15,7 @@ DEF_CONFIG = {'TARGET_DIR': '/etc/icinga/conf.d/generated',
               'META_KEYS': [],
               'PORT': "8935",
               'RESOURCE': "/monitoring",
-              }
+}
 
 CONFIG_FILE = '/etc/monitoring_config_generator/config.yaml'
 # get config file
@@ -45,8 +49,9 @@ def read_config(cfile=CONFIG_FILE):
         config_file.close()
         CONFIG = dict(DEF_CONFIG.items() + new_config.items())
     else:
-        print >>sys.stderr, 'WARNING: config %s not found, using builtin defaults' % cfile
+        print >> sys.stderr, 'WARNING: config %s not found, using builtin defaults' % cfile
         CONFIG = DEF_CONFIG
     return CONFIG
+
 
 CONFIG = read_config()
