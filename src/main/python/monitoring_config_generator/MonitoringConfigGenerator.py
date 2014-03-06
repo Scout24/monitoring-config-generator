@@ -78,6 +78,7 @@ class MonitoringConfigGenerator(object):
         return '%s.cfg' % hostname
 
     def generate(self):
+        file_name = None
         raw_yaml_config, header_source = read_config(self.source)
 
         if raw_yaml_config is None:
@@ -90,10 +91,11 @@ class MonitoringConfigGenerator(object):
             file_name = self.create_filename(yaml_config.host_name)
             yaml_icinga = YamlToIcinga(yaml_config, header_source)
             self.write_output(file_name, yaml_icinga)
-            return file_name
-        else:
-            return None
 
+        if file_name:
+            LOG.info("Icinga config file '%s' created." % file_name)
+
+        return file_name
 
 class YamlToIcinga(object):
     def __init__(self, yaml_config, header):
