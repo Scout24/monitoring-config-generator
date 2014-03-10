@@ -4,10 +4,11 @@ import os.path
 import urlparse
 from time import localtime, strftime
 
+from requests import RequestException
 import requests
 import yaml
-from monitoring_config_generator.exceptions import MonitoringConfigGeneratorException
 
+from monitoring_config_generator.exceptions import MonitoringConfigGeneratorException
 from monitoring_config_generator.yaml_tools.merger import merge_yaml_files
 
 
@@ -37,7 +38,11 @@ def read_config_from_file(path):
 
 
 def read_config_from_host(url):
-    response = requests.get(url)
+    try:
+        response = requests.get(url)
+    except RequestException as e:
+        msg = "Error while getting monitoring yaml from '%s', error: %s" % (url, str(e))
+        raise MonitoringConfigGeneratorException(msg)
 
     def get_from_header(field):
         return response.headers[field] if field in response.headers else None
@@ -55,7 +60,6 @@ def read_config_from_host(url):
 
 
 class Header(object):
-
     MON_CONF_GEN_COMMENT = '# Created by MonitoringConfigGenerator'
     ETAG_COMMENT = '# ETag: '
     MTIME_COMMMENT = '# MTime: '
@@ -98,6 +102,7 @@ class Header(object):
             if line.startswith(comment):
                 value = line.rstrip()[len(comment):]
             return value or current_value
+
         try:
             with open(file_name, 'r') as config_file:
                 for line in config_file.xreadlines():

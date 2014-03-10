@@ -2,6 +2,7 @@ import os
 import unittest
 
 from mock import patch, Mock
+from requests import ConnectionError
 
 
 os.environ['MONITORING_CONFIG_GENERATOR_CONFIG'] = "testdata/testconfig.yaml"
@@ -146,5 +147,11 @@ class TestConfigReaders(unittest.TestCase):
         response_mock = Mock()
         response_mock.status_code = 404
         get_mock.return_value = response_mock
+        self.assertRaises(MonitoringConfigGeneratorException,
+                          read_config_from_host, ANY_PATH)
+
+    @patch('requests.get')
+    def test_read_config_from_host_raises_exception_if_there_is_a_connection_error(self, get_mock):
+        get_mock.side_effect = ConnectionError
         self.assertRaises(MonitoringConfigGeneratorException,
                           read_config_from_host, ANY_PATH)
