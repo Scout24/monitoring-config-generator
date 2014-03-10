@@ -41,7 +41,7 @@ def read_config_from_host(url):
     try:
         response = requests.get(url)
     except RequestException as e:
-        msg = "Error while getting monitoring yaml from '%s', error: %s" % (url, str(e))
+        msg = "Error while getting monitoring yaml from '%s', error: %s" % (url, e)
         raise MonitoringConfigGeneratorException(msg)
 
     def get_from_header(field):
