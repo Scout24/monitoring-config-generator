@@ -2,7 +2,7 @@ import datetime
 import os
 import os.path
 import urlparse
-from time import localtime, strftime
+from time import localtime, strftime, time
 
 from requests import RequestException
 import requests
@@ -51,7 +51,7 @@ def read_config_from_host(url):
         yaml_config = yaml.load(response.content)
         etag = get_from_header('etag')
         mtime = get_from_header('last-modified')
-        mtime = datetime.datetime.strptime(mtime, '%a, %d %b %Y %H:%M:%S %Z').strftime('%s')
+        mtime = datetime.datetime.strptime(mtime, '%a, %d %b %Y %H:%M:%S %Z').strftime('%s') if mtime else int(time())
     else:
         msg = "Request %s returned with status %s. I don't know how to handle that." % (url, response.status_code)
         raise MonitoringConfigGeneratorException(msg)

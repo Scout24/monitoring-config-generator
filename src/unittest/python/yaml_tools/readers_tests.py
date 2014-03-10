@@ -1,21 +1,20 @@
 import os
 import unittest
+import time
 
 from mock import patch, Mock
-from requests import ConnectionError, RequestException
+from requests import RequestException
 
 
 os.environ['MONITORING_CONFIG_GENERATOR_CONFIG'] = "testdata/testconfig.yaml"
 from monitoring_config_generator.yaml_tools.readers import (read_config,
-                                                 read_config_from_file,
-                                                 read_config_from_host,
-                                                 Header,
-                                                 )
+                                                            read_config_from_file,
+                                                            read_config_from_host,
+                                                            Header)
 from monitoring_config_generator.exceptions import MonitoringConfigGeneratorException
 
 
 class TestHeader(unittest.TestCase):
-
     def test_constructor(self):
         header = Header(etag='a', mtime=1)
         self.assertEquals(header.etag, 'a')
@@ -27,8 +26,6 @@ class TestHeader(unittest.TestCase):
         my_header = Header(etag='a', mtime=0)
         your_header = Header(etag='b', mtime=0)
         self.assertFalse(my_header.is_newer_than(your_header))
-
-
 
     def test_compare_myheader_is_newer_than_yours(self):
         my_header = Header(etag='a', mtime=1)
@@ -72,7 +69,6 @@ class TestHeader(unittest.TestCase):
 
 
 class TestReadEtag(unittest.TestCase):
-
     def test_reads_etag_from_file(self):
         etag = "754d61019fb8a470a654c25e59b10311963f00b5e2d2784712732feed6a82066"
         expected = Header(etag=etag)
@@ -96,7 +92,6 @@ ANY_PATH = '/path/to/file'
 
 
 class TestConfigReaders(unittest.TestCase):
-
     @patch('monitoring_config_generator.yaml_tools.readers.read_config_from_file')
     def test_read_config_calls_read_config_from_file_with_file_uri(
             self, mock_read_config_from_file):
@@ -134,13 +129,23 @@ class TestConfigReaders(unittest.TestCase):
         response_mock.status_code = 200
         response_mock.content = 'yaml:'
         response_mock.headers = {'etag': 'deadbeefbeebaadfoodbabe',
-                                 'last-modified': 'Thu, 01 Jan 1970 01:00:00 GMT'
-                                 }
+                                 'last-modified': 'Thu, 01 Jan 1970 01:00:00 GMT'}
         get_mock.return_value = response_mock
         merged_yaml, header = read_config_from_host(ANY_PATH)
         self.assertEquals({'yaml': None}, merged_yaml)
         self.assertEquals('deadbeefbeebaadfoodbabe', header.etag)
         self.assertEquals(0, header.mtime)
+
+    @patch('requests.get')
+    def test_read_config_from_host_without_mtime(self, get_mock):
+        response_mock = Mock()
+        response_mock.status_code = 200
+        response_mock.content = 'yaml:'
+        response_mock.headers = {'etag': 'deadbeefbeebaadfoodbabe'}
+        get_mock.return_value = response_mock
+        merged_yaml, header = read_config_from_host(ANY_PATH)
+
+        self.assertAlmostEquals(int(time.time()), header.mtime)
 
     @patch('requests.get')
     def test_read_config_from_host_raises_exception(self, get_mock):
