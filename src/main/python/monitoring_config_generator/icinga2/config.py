@@ -16,15 +16,24 @@ class Config(object):
         for key in sorted_keys:
             value = object_data[key]
             # TODO: what shall we do with config items without '=' as separator like 'import generic-host'
-            self.lines.append(("%s = %s" % (key, self.value_to_icinga(value))))
+            self.lines.append(("%s = %s" % (key, self._format_value(value))))
         self.write_line("}")
 
     @staticmethod
-    def value_to_icinga(value):
-        """Convert a scalar or list to Icinga value format. Lists are concatenated by ,
-        and empty (None) values produce an empty string"""
+    def _clean_string(string):
+        exclude_list = set("!\"#$%&'*+,./:;<=>?@[\]^`{|}~")
+        clean_string = ''.join(character for character in string if character not in exclude_list)
+        return clean_string.strip()
+
+    @staticmethod
+    def _format_value(value):
+
+        if isinstance(value, int):
+            return str(value)
+        if not value:
+            return ""
         if isinstance(value, list):
             # explicitly set None values to empty string
-            return ",".join([str(x) if (x is not None) else "" for x in value])
-        else:
-            return str(value)
+            return "[" + ",".join([str(x) if (x is not None) else "" for x in value]) + "]"
+
+        return str(value)
