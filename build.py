@@ -30,11 +30,6 @@ def set_properties(project):
     project.depends_on("docopt")
     project.depends_on('PyYAML')
     project.depends_on('requests')
-    project.set_property('distutils_classifiers', [
-        "Development Status :: 4 - Beta",
-        "Topic :: Utilities",
-        "Programming Language :: Python",
-        ])
     project.set_property('copy_resources_target', '$dir_dist')
     project.get_property('copy_resources_glob').extend(
             ['setup.cfg', 'LICENSE.TXT', 'README.md', 'MANIFEST.in'])
