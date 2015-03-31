@@ -2,15 +2,16 @@ import datetime
 import os
 import os.path
 import urlparse
+import socket
 from time import localtime, strftime, time
 
 from requests import RequestException
+from requests.exceptions import ConnectTimeout
 import requests
 import yaml
 
-from monitoring_config_generator.exceptions import MonitoringConfigGeneratorException
+from monitoring_config_generator.exceptions import MonitoringConfigGeneratorException, HostUnreachableException
 from monitoring_config_generator.yaml_tools.merger import merge_yaml_files
-
 
 def is_file(parsed_uri):
     return parsed_uri.scheme in ['', 'file']
@@ -40,8 +41,14 @@ def read_config_from_file(path):
 def read_config_from_host(url):
     try:
         response = requests.get(url)
+    except socket.gaierror as e:
+        msg = "Could not open socket for '%s', error: %s" % (url, e)
+        raise HostUnreachableException(msg)
+    except ConnectTimeout as e:
+        msg = "Connect timed out for '%s', error: %s" % (url, e)
+        raise HostUnreachableException(msg)
     except RequestException as e:
-        msg = "Error while getting monitoring yaml from '%s', error: %s" % (url, e)
+        msg = "Could not get monitoring yaml from '%s', error: %s" % (url, e)
         raise MonitoringConfigGeneratorException(msg)
 
     def get_from_header(field):

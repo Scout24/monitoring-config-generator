@@ -1,9 +1,11 @@
 import os
-import unittest
+import unittest2
 import time
+import socket
 
 from mock import patch, Mock
 from requests import RequestException
+from requests.exceptions import ConnectTimeout
 
 
 os.environ['MONITORING_CONFIG_GENERATOR_CONFIG'] = "testdata/testconfig.yaml"
@@ -11,10 +13,10 @@ from monitoring_config_generator.yaml_tools.readers import (read_config,
                                                             read_config_from_file,
                                                             read_config_from_host,
                                                             Header)
-from monitoring_config_generator.exceptions import MonitoringConfigGeneratorException
+from monitoring_config_generator.exceptions import MonitoringConfigGeneratorException, HostUnreachableException
 
 
-class TestHeader(unittest.TestCase):
+class TestHeader(unittest2.TestCase):
     def test_constructor(self):
         header = Header(etag='a', mtime=1)
         self.assertEquals(header.etag, 'a')
@@ -68,7 +70,7 @@ class TestHeader(unittest.TestCase):
         self.assertFalse(my_header.is_newer_than(your_header))
 
 
-class TestReadEtag(unittest.TestCase):
+class TestReadEtag(unittest2.TestCase):
     def test_reads_etag_from_file(self):
         etag = "754d61019fb8a470a654c25e59b10311963f00b5e2d2784712732feed6a82066"
         expected = Header(etag=etag)
@@ -91,7 +93,7 @@ class TestReadEtag(unittest.TestCase):
 ANY_PATH = '/path/to/file'
 
 
-class TestConfigReaders(unittest.TestCase):
+class TestConfigReaders(unittest2.TestCase):
     @patch('monitoring_config_generator.yaml_tools.readers.read_config_from_file')
     def test_read_config_calls_read_config_from_file_with_file_uri(
             self, mock_read_config_from_file):
@@ -148,15 +150,27 @@ class TestConfigReaders(unittest.TestCase):
         self.assertAlmostEquals(int(time.time()), header.mtime)
 
     @patch('requests.get')
-    def test_read_config_from_host_raises_exception(self, get_mock):
+    def test_read_config_from_host_raises_exception_on_404(self, get_mock):
         response_mock = Mock()
         response_mock.status_code = 404
         get_mock.return_value = response_mock
-        self.assertRaises(MonitoringConfigGeneratorException,
-                          read_config_from_host, ANY_PATH)
+        with self.assertRaises(MonitoringConfigGeneratorException):
+            read_config_from_host(ANY_PATH)
 
     @patch('requests.get')
-    def test_read_config_from_host_raises_exception_if_there_is_a_connection_error(self, get_mock):
+    def test_read_config_from_host_raises_host_unreachable_exception_if_there_is_a_socket_error(self, get_mock):
+        get_mock.side_effect = socket.gaierror
+        with self.assertRaises(HostUnreachableException):
+            read_config_from_host(ANY_PATH)
+
+    @patch('requests.get')
+    def test_read_config_from_host_raises_host_unreachable_exception_if_there_is_a_timeout_error(self, get_mock):
+        get_mock.side_effect = ConnectTimeout
+        with self.assertRaises(HostUnreachableException):
+            read_config_from_host(ANY_PATH)
+
+    @patch('requests.get')
+    def test_read_config_from_host_raises_exception_on_any_other_requests_error(self, get_mock):
         get_mock.side_effect = RequestException
-        self.assertRaises(MonitoringConfigGeneratorException,
-                          read_config_from_host, ANY_PATH)
+        with self.assertRaises(MonitoringConfigGeneratorException):
+            read_config_from_host(ANY_PATH)

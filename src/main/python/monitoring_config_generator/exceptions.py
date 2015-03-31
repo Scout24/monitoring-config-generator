@@ -32,3 +32,6 @@ class ConfigurationContainsUndefinedVariables(IcingaCheckException):
 
 class NoSuchHostname(Exception):
     pass
+
+class HostUnreachableException(MonitoringConfigGeneratorException):
+    pass

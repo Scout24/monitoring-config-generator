@@ -26,18 +26,17 @@ import sys
 
 from docopt import docopt
 
-from .exceptions import (MonitoringConfigGeneratorException,
-                         ConfigurationContainsUndefinedVariables,
-                         NoSuchHostname)
+from monitoring_config_generator.exceptions import MonitoringConfigGeneratorException, \
+    ConfigurationContainsUndefinedVariables, NoSuchHostname, HostUnreachableException
 from monitoring_config_generator import set_log_level_to_debug
 from monitoring_config_generator.yaml_tools.readers import Header, read_config
 from monitoring_config_generator.yaml_tools.config import YamlConfig
-from .settings import CONFIG
+from monitoring_config_generator.settings import CONFIG
 
 
-CONFIG_WRITTEN = 0
-ERROR = 1
-CONFIG_NOT_WRITTEN = 2
+EXIT_CODE_CONFIG_WRITTEN = 0
+EXIT_CODE_ERROR = 1
+EXIT_CODE_NOT_WRITTEN = 2
 
 LOG = logging.getLogger("monconfgenerator")
 
@@ -149,15 +148,18 @@ def generate_config():
                                               arg['--debug'],
                                               arg['--targetdir'],
                                               arg['--skip-checks']).generate()
-        exit_code = CONFIG_WRITTEN if file_name else CONFIG_NOT_WRITTEN
+        exit_code = EXIT_CODE_CONFIG_WRITTEN if file_name else EXIT_CODE_NOT_WRITTEN
+    except HostUnreachableException:
+        LOG.warn("Target url {0} unreachable. Could not get yaml config!".format(arg['URL']))
+        exit_code = EXIT_CODE_NOT_WRITTEN
     except ConfigurationContainsUndefinedVariables:
         LOG.error("Configuration contained undefined variables!")
-        exit_code = ERROR
+        exit_code = EXIT_CODE_ERROR
     except SystemExit as e:
         exit_code = e.code
     except BaseException as e:
         LOG.error(e)
-        exit_code = 1
+        exit_code = EXIT_CODE_ERROR
     finally:
         stop_time = datetime.now()
         LOG.info("finished in %s" % (stop_time - start_time))
