@@ -6,7 +6,7 @@ import socket
 from time import localtime, strftime, time
 
 from requests import RequestException
-from requests.exceptions import ConnectTimeout
+from requests.exceptions import Timeout
 import requests
 import yaml
 
@@ -44,7 +44,7 @@ def read_config_from_host(url):
     except socket.gaierror as e:
         msg = "Could not open socket for '%s', error: %s" % (url, e)
         raise HostUnreachableException(msg)
-    except ConnectTimeout as e:
+    except Timeout as e:
         msg = "Connect timed out for '%s', error: %s" % (url, e)
         raise HostUnreachableException(msg)
     except RequestException as e:

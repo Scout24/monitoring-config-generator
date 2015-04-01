@@ -5,7 +5,7 @@ import socket
 
 from mock import patch, Mock
 from requests import RequestException
-from requests.exceptions import ConnectTimeout
+from requests.exceptions import Timeout
 
 
 os.environ['MONITORING_CONFIG_GENERATOR_CONFIG'] = "testdata/testconfig.yaml"
@@ -165,7 +165,7 @@ class TestConfigReaders(unittest2.TestCase):
 
     @patch('requests.get')
     def test_read_config_from_host_raises_host_unreachable_exception_if_there_is_a_timeout_error(self, get_mock):
-        get_mock.side_effect = ConnectTimeout
+        get_mock.side_effect = Timeout
         with self.assertRaises(HostUnreachableException):
             read_config_from_host(ANY_PATH)
 
