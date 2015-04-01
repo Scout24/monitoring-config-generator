@@ -41,7 +41,7 @@ def read_config_from_file(path):
 def read_config_from_host(url):
     try:
         response = requests.get(url)
-    except socket.gaierror as e:
+    except socket.error as e:
         msg = "Could not open socket for '%s', error: %s" % (url, e)
         raise HostUnreachableException(msg)
     except Timeout as e:

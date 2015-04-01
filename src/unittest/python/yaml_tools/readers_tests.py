@@ -158,8 +158,14 @@ class TestConfigReaders(unittest2.TestCase):
             read_config_from_host(ANY_PATH)
 
     @patch('requests.get')
-    def test_read_config_from_host_raises_host_unreachable_exception_if_there_is_a_socket_error(self, get_mock):
+    def test_read_config_from_host_raises_host_unreachable_exception_if_there_is_a_socket_gaierror(self, get_mock):
         get_mock.side_effect = socket.gaierror
+        with self.assertRaises(HostUnreachableException):
+            read_config_from_host(ANY_PATH)
+
+    @patch('requests.get')
+    def test_read_config_from_host_raises_host_unreachable_exception_if_there_is_a_socket_error(self, get_mock):
+        get_mock.side_effect = socket.error
         with self.assertRaises(HostUnreachableException):
             read_config_from_host(ANY_PATH)
 
