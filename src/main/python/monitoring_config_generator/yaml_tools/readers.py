@@ -5,8 +5,7 @@ import urlparse
 import socket
 from time import localtime, strftime, time
 
-from requests import RequestException
-from requests.exceptions import Timeout
+from requests.exceptions import RequestException, ConnectionError, Timeout
 import requests
 import yaml
 
@@ -43,6 +42,9 @@ def read_config_from_host(url):
         response = requests.get(url)
     except socket.error as e:
         msg = "Could not open socket for '%s', error: %s" % (url, e)
+        raise HostUnreachableException(msg)
+    except ConnectionError as e:
+        msg = "Could not establish connection for '%s', error: %s" % (url, e)
         raise HostUnreachableException(msg)
     except Timeout as e:
         msg = "Connect timed out for '%s', error: %s" % (url, e)
