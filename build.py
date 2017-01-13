@@ -33,6 +33,7 @@ def set_properties(project):
     project.depends_on('PyYAML')
     project.depends_on('mock')
     project.depends_on('requests')
+    project.build_depends_on('unittest2')
     project.set_property('install_dependencies_upgrade', True)
     project.set_property('distutils_classifiers', [
         "Development Status :: 4 - Beta",
