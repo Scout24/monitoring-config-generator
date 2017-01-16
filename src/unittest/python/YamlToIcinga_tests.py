@@ -1,5 +1,6 @@
 import os
 import unittest
+from mock import Mock
 
 os.environ['MONITORING_CONFIG_GENERATOR_CONFIG'] = "testdata/testconfig.yaml"
 from monitoring_config_generator.MonitoringConfigGenerator import YamlToIcinga
@@ -24,3 +25,28 @@ class Test(unittest.TestCase):
         self.assertEquals(",,,", YamlToIcinga.value_to_icinga([None, None, None, None]))
         self.assertEquals(",23,42,", YamlToIcinga.value_to_icinga([None, "23", 42, None]))
 
+    def _get_config_mock(self, host=None, services=None):
+        config = Mock()
+        config.host = host or {}
+        config.services = services or {}
+        return config
+
+    def test_write_section_forbidden_characters(self):
+        # Malicious hosts may try to insert new sections, e.g. by setting a
+        # value to  "42\n}\n define command {\n ......" which would lead to
+        # arbitrary code execution. Therefore, certain characters must be
+        # forbidden.
+        header = Mock()
+        header.serialize.return_value = "the header"
+
+        for forbidden in '\n', '}':
+            # Forbidden character in 'host' section.
+            config = self._get_config_mock(host={'key': 'xx%syy' % forbidden})
+            self.assertRaises(Exception, YamlToIcinga, config, header)
+            config = self._get_config_mock(host={'xx%syy' % forbidden: "value"})
+            self.assertRaises(Exception, YamlToIcinga, config, header)
+
+            config = self._get_config_mock(services={'foo': 'xx%syy' % forbidden})
+            self.assertRaises(Exception, YamlToIcinga, config, header)
+            config = self._get_config_mock(services={'xx%syy' % forbidden: "value"})
+            self.assertRaises(Exception, YamlToIcinga, config, header)

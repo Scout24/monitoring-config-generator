@@ -119,8 +119,14 @@ class YamlToIcinga(object):
         sorted_keys = section_data.keys()
         sorted_keys.sort()
         for key in sorted_keys:
-            value = section_data[key]
-            self.icinga_lines.append(("%s%-45s%s" % (self.indent, key, self.value_to_icinga(value))))
+            value = self.value_to_icinga(section_data[key])
+            icinga_line = "%s%-45s%s" % (self.indent, key, value)
+
+            if "\n" in icinga_line or "}" in icinga_line:
+                msg = "Found forbidden newline or '}' character in section %r."
+                raise Exception(msg % section_name)
+
+            self.icinga_lines.append(icinga_line)
         self.write_line("}")
 
     @staticmethod
