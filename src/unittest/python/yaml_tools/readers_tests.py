@@ -150,6 +150,16 @@ class TestConfigReaders(unittest2.TestCase):
         self.assertAlmostEquals(int(time.time()), header.mtime)
 
     @patch('requests.get')
+    def test_read_config_from_host_rejects_multiline_etag(self, get_mock):
+        # To prevent config-injection, etag must not be a multi-line string.
+        response_mock = Mock()
+        response_mock.status_code = 200
+        response_mock.content = 'yaml:'
+        response_mock.headers = {'etag': 'first line\nsecond line'}
+        get_mock.return_value = response_mock
+        self.assertRaises(Exception, read_config_from_host, ANY_PATH)
+
+    @patch('requests.get')
     def test_read_config_from_host_raises_exception_on_404(self, get_mock):
         response_mock = Mock()
         response_mock.status_code = 404

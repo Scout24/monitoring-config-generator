@@ -59,6 +59,8 @@ def read_config_from_host(url):
     if response.status_code == 200:
         yaml_config = yaml.safe_load(response.content)
         etag = get_from_header('etag')
+        if '\n' in etag:
+            raise MonitoringConfigGeneratorException('Newline found in etag!')
         mtime = get_from_header('last-modified')
         mtime = datetime.datetime.strptime(mtime, '%a, %d %b %Y %H:%M:%S %Z').strftime('%s') if mtime else int(time())
     else:
