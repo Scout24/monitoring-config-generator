@@ -73,8 +73,13 @@ class MonitoringConfigGenerator(object):
         output_writer = OutputWriter(self.output_path(file_name))
         output_writer.write_lines(lines)
 
-    def create_filename(self, hostname):
-        return '%s.cfg' % hostname
+    @staticmethod
+    def create_filename(hostname):
+        name = '%s.cfg' % hostname
+        if name != os.path.basename(name):
+            msg = "Directory traversal attempt detected for host name %r"
+            raise Exception(msg % hostname)
+        return name
 
     def generate(self):
         file_name = None

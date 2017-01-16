@@ -254,6 +254,10 @@ class Test(unittest.TestCase):
         input_dir = "itest_testhost07_multifile_dir"
         self.run_full_config_gen(input_dir, "testhost07", "testhost07.cfg")
 
+    def test_create_filename_prevents_directory_traversal_attacks(self):
+        host_name = "../../../foobar"
+        self.assertRaises(Exception, MonitoringConfigGenerator.create_filename, host_name)
+
 
 if __name__ == "__main__":
     unittest.main()
